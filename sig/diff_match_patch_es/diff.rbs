@@ -1,0 +1,113 @@
+module DiffMatchPatchES
+  DIFF_DELETE: -1
+
+  DIFF_INSERT: 1
+
+  DIFF_EQUAL: 0
+
+  LINE_INDEX_SURROGATE_SHIFT: Integer
+
+  NON_ALPHA_NUMERIC_REGEX: Regexp
+
+  WHITESPACE_REGEX: Regexp
+
+  LINEBREAK_REGEX: Regexp
+
+  BLANKLINE_END_REGEX: Regexp
+
+  BLANKLINE_START_REGEX: Regexp
+
+  # A half-match: [text1_a, text1_b, text2_a, text2_b, mid_common].
+  type half_match = [String, String, String, String, String]
+
+  def self?.create_diff: (op operation, String text) -> diff
+
+  def self?.now_ms: () -> Float
+
+  # Find the differences between two texts.
+  def self?.diff_main: (String text1, String text2, ?options_arg options, ?bool checklines, ?Numeric? deadline) -> Array[diff]
+
+  # Find the differences between two texts. Assumes that the texts do not
+  # have any common prefix or suffix.
+  def self?.diff_compute: (String text1, String text2, Options options, bool checklines, Numeric deadline) -> Array[diff]
+
+  # Do a quick line-level diff on both strings, then re-diff the parts for
+  # greater accuracy. This speedup can produce non-minimal diffs.
+  def self?.diff_line_mode: (String text1, String text2, Options options, Numeric deadline) -> Array[diff]
+
+  # Find the 'middle snake' of a diff, split the problem in two
+  # and return the recursively constructed diff.
+  def self?.diff_bisect: (String text1, String text2, Options options, Numeric deadline) -> Array[diff]
+
+  # Given the location of the 'middle snake', split the diff in two parts and recurse.
+  def self?.diff_bisect_split: (String text1, String text2, Options options, Integer x, Integer y, Numeric deadline) -> Array[diff]
+
+  def self?.line_char_for: (Integer index) -> String
+
+  def self?.line_index_for: (String char) -> Integer
+
+  # Split two texts into an array of strings.
+  # Reduce the texts to a string of placeholder characters where each character represents one line.
+  def self?.diff_lines_to_chars: (String text1, String text2) -> { chars1: String, chars2: String, line_array: Array[String] }
+
+  # Rehydrate the text in a diff from a string of line placeholders to real lines of text. Mutates diffs in place.
+  def self?.diff_chars_to_lines: (Array[diff] diffs, Array[String] line_array) -> nil
+
+  # Determine the common prefix of two strings.
+  def self?.diff_common_prefix: (String text1, String text2) -> Integer
+
+  # Determine the common suffix of two strings.
+  def self?.diff_common_suffix: (String text1, String text2) -> Integer
+
+  # Determine if the suffix of one string is the prefix of another.
+  def self?.diff_common_overlap: (String text1, String text2) -> Integer
+
+  # Do the two texts share a substring which is at least half the length of the longer text?
+  def self?.diff_half_match: (String text1, String text2, Options options) -> half_match?
+
+  def self?.diff_half_match_i: (String longtext, String shorttext, Integer i) -> half_match?
+
+  # Reduce the number of edits by eliminating semantically trivial
+  # equalities. Mutates diffs in place.
+  def self?.diff_cleanup_semantic: (Array[diff] diffs) -> nil
+
+  # Given two strings, compute a score representing whether the internal
+  # boundary falls on logical boundaries. 6 (best) to 0 (worst).
+  def self?.diff_cleanup_semantic_score: (String one, String two) -> Integer
+
+  # Look for single edits surrounded on both sides by equalities which can be
+  # shifted sideways to align the edit to a word boundary. Mutates diffs.
+  def self?.diff_cleanup_semantic_lossless: (Array[diff] diffs) -> nil
+
+  # Reduce the number of edits by eliminating operationally trivial
+  # equalities. Mutates diffs in place.
+  def self?.diff_cleanup_efficiency: (Array[diff] diffs, ?options_arg options) -> nil
+
+  # Reorder and merge like edit sections. Merge equalities. Mutates diffs.
+  def self?.diff_cleanup_merge: (Array[diff] diffs) -> nil
+
+  # loc is a location in text1, compute and return the equivalent location
+  # in text2.
+  def self?.diff_x_index: (Array[diff] diffs, Integer loc) -> Integer
+
+  # Convert a diff array into a pretty HTML report.
+  def self?.diff_pretty_html: (Array[diff] diffs) -> String
+
+  # Compute and return the source text (all equalities and deletions).
+  def self?.diff_text1: (Array[diff] diffs) -> String
+
+  # Compute and return the destination text (all equalities and insertions).
+  def self?.diff_text2: (Array[diff] diffs) -> String
+
+  # Compute the Levenshtein distance; the number of inserted, deleted or
+  # substituted characters.
+  def self?.diff_levenshtein: (Array[diff] diffs) -> Integer
+
+  # Crush the diff into an encoded string which describes the operations
+  # required to transform text1 into text2.
+  def self?.diff_to_delta: (Array[diff] diffs) -> String
+
+  # Given the original text1, and an encoded string which describes the
+  # operations required to transform text1 into text2, compute the full diff.
+  def self?.diff_from_delta: (String text1, String delta) -> Array[diff]
+end

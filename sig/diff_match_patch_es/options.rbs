@@ -1,0 +1,38 @@
+module DiffMatchPatchES
+  class Options
+    ATTRIBUTES: Array[Symbol]
+
+    attr_accessor diff_timeout: Numeric
+
+    attr_accessor diff_edit_cost: Integer
+
+    attr_accessor match_threshold: Numeric
+
+    attr_accessor match_distance: Integer
+
+    attr_accessor patch_delete_threshold: Numeric
+
+    attr_accessor patch_margin: Integer
+
+    attr_accessor match_max_bits: Integer
+
+    def initialize: (
+      ?diff_timeout: Numeric,
+      ?diff_edit_cost: Integer,
+      ?match_threshold: Numeric,
+      ?match_distance: Integer,
+      ?patch_delete_threshold: Numeric,
+      ?patch_margin: Integer,
+      ?match_max_bits: Integer
+    ) -> void
+
+    def to_h: () -> Hash[Symbol, Numeric]
+
+    def ==: (untyped other) -> bool
+  end
+
+  DEFAULT_OPTIONS: Options
+
+  # Accepts nil, a Hash of overrides, or an already-resolved Options.
+  def self?.resolve_options: (?options_arg options) -> Options
+end

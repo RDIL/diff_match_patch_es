@@ -1,0 +1,14 @@
+module DiffMatchPatchES
+  MASK32: Integer
+
+  # Locate the best instance of 'pattern' in 'text' near 'loc'.
+  # Returns the best match index or -1.
+  def self?.match_main: (String text, String pattern, Integer loc, ?options_arg options) -> Integer
+
+  # Locate the best instance of 'pattern' in 'text' near 'loc' using the
+  # Bitap algorithm. Returns the best match index or -1.
+  def self?.match_bitap: (String text, String pattern, Integer loc, ?options_arg options) -> Integer
+
+  # Initialise the alphabet (character -> bitmask) for the Bitap algorithm.
+  def self?.match_alphabet: (String pattern) -> Hash[String, Integer]
+end

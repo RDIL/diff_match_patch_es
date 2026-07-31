@@ -1,0 +1,8 @@
+{
+  "name": "dmp-es-parity-suite",
+  "private": true,
+  "dependencies": {
+    "diff-match-patch-es": "^2.0.0"
+  },
+  "packageManager": "yarn@4.18.0"
+}

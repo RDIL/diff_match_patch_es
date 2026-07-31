@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.3', '3.4', '4.0']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Unit tests
+        run: bundle exec rake test
+
+      - name: Validate RBS signatures
+        run: bundle exec rbs -I sig validate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Enable corepack (yarn 4 via packageManager)
+        run: corepack enable
+
+      - name: Run parity corpus
+        run: bundle exec rake parity

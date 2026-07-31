@@ -1,0 +1,37 @@
+module DiffMatchPatchES
+  # Helpers that reproduce JavaScript string semantics exactly.
+  module JsString
+    JS_PARSE_INT: Regexp
+
+    ENCODE_URI_UNESCAPED: Regexp
+
+    DECODE_URI_RESERVED: String
+
+    class UriError < StandardError
+    end
+
+    # JS String.prototype.substring: negative/overflowing indices clamp to
+    # [0, length] and the arguments swap when start > end.
+    def self?.substring: (String str, Integer start_index, ?Integer? end_index) -> String
+
+    # JS String.prototype.charAt: '' when out of range.
+    def self?.char_at: (String str, Integer index) -> String
+
+    # JS String.prototype.indexOf.
+    def self?.index_of: (String str, String pattern, ?Integer from) -> Integer
+
+    # JS String.prototype.lastIndexOf: the match may start at or before +from+.
+    def self?.last_index_of: (String str, String pattern, Integer from) -> Integer
+
+    # JS Number.parseInt(str, 10). Returns nil where JS returns NaN.
+    def self?.parse_int: (String str) -> Integer?
+
+    # JS encodeURI.
+    def self?.encode_uri: (String str) -> String
+
+    # JS decodeURI. Raises UriError where JS throws URIError.
+    def self?.decode_uri: (String str) -> String
+
+    def self?.read_escaped_byte: (String str, Integer index) -> Integer
+  end
+end

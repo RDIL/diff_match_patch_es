@@ -1,0 +1,60 @@
+module DiffMatchPatchES
+  # One patch operation. start1/start2 are nil until the patch is
+  # initialized by patch_make (or parsed by patch_from_text).
+  class Patch
+    attr_accessor diffs: Array[diff]
+
+    attr_accessor start1: Integer?
+
+    attr_accessor start2: Integer?
+
+    attr_accessor length1: Integer
+
+    attr_accessor length2: Integer
+
+    def initialize: () -> void
+
+    # Emulate GNU diff's format.
+    def to_s: () -> String
+
+    def ==: (untyped other) -> bool
+  end
+
+  def self?.create_patch: () -> Patch
+
+  # Increase the context until it is unique, but don't let the pattern
+  # expand beyond match_max_bits. Mutates patch in place.
+  def self?.patch_add_context: (Patch patch, String text, options_arg options) -> nil
+
+  # Compute a list of patches to turn text1 into text2.
+  # Method 1: a = text1, b = text2
+  # Method 2: a = diffs
+  # Method 3 (optimal): a = text1, b = diffs
+  # Method 4 (deprecated, use method 3): a = text1, b = text2, c = diffs
+  def self?.patch_make: (String a, String opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                      | (Array[diff] a, ?nil opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                      | (String a, Array[diff] opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                      | (String a, String opt_b, Array[diff] opt_c, ?options_arg options) -> Array[Patch]
+
+  # Given an array of patches, return another array that is identical.
+  def self?.patch_deep_copy: (Array[Patch] patches) -> Array[Patch]
+
+  # Merge a set of patches onto the text. Return a patched text, as well as
+  # a list of true/false values indicating which patches were applied.
+  def self?.patch_apply: (Array[Patch] patches, String text, ?options_arg options) -> [String, Array[bool]]
+
+  # Add some padding on text start and end so that edges can match
+  # something. Returns the padding string added to each side.
+  def self?.patch_add_padding: (Array[Patch] patches, ?options_arg options) -> String
+
+  # Look through the patches and break up any which are longer than the
+  # maximum limit of the match algorithm. Mutates patches in place.
+  def self?.patch_split_max: (Array[Patch] patches, ?options_arg options) -> nil
+
+  # Take a list of patches and return a textual representation.
+  def self?.patch_to_text: (Array[Patch] patches) -> String
+
+  # Parse a textual representation of patches and return a list of Patch
+  # objects.
+  def self?.patch_from_text: (String? textline) -> Array[Patch]
+end

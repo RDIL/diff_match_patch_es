@@ -1,0 +1,34 @@
+module DiffMatchPatchES
+  class Error < StandardError
+  end
+
+  # A diff operation: DIFF_DELETE (-1), DIFF_EQUAL (0), or DIFF_INSERT (1).
+  type op = -1 | 0 | 1
+
+  # A single diff: a mutable two-element `[operation, text]` array.
+  type diff = [op, String]
+
+  # Option overrides, mirroring the JS option names.
+  type options_hash = {
+    ?diff_timeout: Numeric,
+    ?diff_edit_cost: Integer,
+    ?match_threshold: Numeric,
+    ?match_distance: Integer,
+    ?patch_delete_threshold: Numeric,
+    ?patch_margin: Integer,
+    ?match_max_bits: Integer
+  }
+
+  # Anything resolve_options accepts: nil, a Hash of overrides, or an already-resolved Options.
+  type options_arg = Options | options_hash | nil
+
+  # Short aliases mirroring the `diff`/`match`/`patch` exports of index.ts.
+  def self?.diff: (String text1, String text2, ?options_arg options, ?bool checklines, ?Numeric? deadline) -> Array[diff]
+
+  def self?.match: (String text, String pattern, Integer loc, ?options_arg options) -> Integer
+
+  def self?.patch: (String a, String opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                 | (Array[diff] a, ?nil opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                 | (String a, Array[diff] opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
+                 | (String a, String opt_b, Array[diff] opt_c, ?options_arg options) -> Array[Patch]
+end
