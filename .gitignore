@@ -1,3 +1,5 @@
 /.idea/
 /Gemfile.lock
 *.gem
+.yardoc
+doc
