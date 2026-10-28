@@ -51,22 +51,22 @@ class PatchTest < Minitest::Test
 
     options.patch_margin = 4
     p = DMP.patch_from_text("@@ -21,4 +21,10 @@\n-jump\n+somersault\n")[0]
-    DMP.patch_add_context(p, 'The quick brown fox jumps over the lazy dog.', options)
+    DMP.patch_add_context!(p, 'The quick brown fox jumps over the lazy dog.', options)
     assert_equal "@@ -17,12 +17,18 @@\n fox \n-jump\n+somersault\n s ov\n", p.to_s
 
     # Same, but not enough trailing context.
     p = DMP.patch_from_text("@@ -21,4 +21,10 @@\n-jump\n+somersault\n")[0]
-    DMP.patch_add_context(p, 'The quick brown fox jumps.', options)
+    DMP.patch_add_context!(p, 'The quick brown fox jumps.', options)
     assert_equal "@@ -17,10 +17,16 @@\n fox \n-jump\n+somersault\n s.\n", p.to_s
 
     # Same, but not enough leading context.
     p = DMP.patch_from_text("@@ -3 +3,2 @@\n-e\n+at\n")[0]
-    DMP.patch_add_context(p, 'The quick brown fox jumps.', options)
+    DMP.patch_add_context!(p, 'The quick brown fox jumps.', options)
     assert_equal "@@ -1,7 +1,8 @@\n Th\n-e\n+at\n  qui\n", p.to_s
 
     # Same, but with ambiguity.
     p = DMP.patch_from_text("@@ -3 +3,2 @@\n-e\n+at\n")[0]
-    DMP.patch_add_context(p, 'The quick brown fox jumps.  The quick brown fox crashes.', options)
+    DMP.patch_add_context!(p, 'The quick brown fox jumps.  The quick brown fox crashes.', options)
     assert_equal "@@ -1,27 +1,28 @@\n Th\n-e\n+at\n  quick brown fox jumps. \n", p.to_s
   end
 
@@ -129,7 +129,7 @@ class PatchTest < Minitest::Test
 
     # Assumes that match_max_bits is 32.
     patches = DMP.patch_make('abcdefghijklmnopqrstuvwxyz01234567890', 'XabXcdXefXghXijXklXmnXopXqrXstXuvXwxXyzX01X23X45X67X89X0')
-    DMP.patch_split_max(patches, options)
+    DMP.patch_split_max!(patches, options)
     assert_equal "@@ -1,32 +1,46 @@\n+X\n ab\n+X\n cd\n+X\n ef\n+X\n gh\n+X\n ij\n+X\n kl\n+X\n mn\n+X\n op\n+X\n qr\n" \
                  "+X\n st\n+X\n uv\n+X\n wx\n+X\n yz\n+X\n 012345\n@@ -25,13 +39,18 @@\n zX01\n+X\n 23\n+X\n 45\n" \
                  "+X\n 67\n+X\n 89\n+X\n 0\n",
@@ -139,18 +139,18 @@ class PatchTest < Minitest::Test
       'abcdef1234567890123456789012345678901234567890123456789012345678901234567890uvwxyz', 'abcdefuvwxyz'
     )
     old_to_text = DMP.patch_to_text(patches)
-    DMP.patch_split_max(patches, options)
+    DMP.patch_split_max!(patches, options)
     assert_equal old_to_text, DMP.patch_to_text(patches)
 
     patches = DMP.patch_make('1234567890123456789012345678901234567890123456789012345678901234567890', 'abc')
-    DMP.patch_split_max(patches, options)
+    DMP.patch_split_max!(patches, options)
     assert_equal "@@ -1,32 +1,4 @@\n-1234567890123456789012345678\n 9012\n@@ -29,32 +1,4 @@\n" \
                  "-9012345678901234567890123456\n 7890\n@@ -57,14 +1,3 @@\n-78901234567890\n+abc\n",
                  DMP.patch_to_text(patches)
 
     patches = DMP.patch_make('abcdefghij , h : 0 , t : 1 abcdefghij , h : 0 , t : 1 abcdefghij , h : 0 , t : 1',
                              'abcdefghij , h : 1 , t : 1 abcdefghij , h : 1 , t : 1 abcdefghij , h : 0 , t : 1')
-    DMP.patch_split_max(patches, options)
+    DMP.patch_split_max!(patches, options)
     assert_equal "@@ -2,32 +2,32 @@\n bcdefghij , h : \n-0\n+1\n  , t : 1 abcdef\n" \
                  "@@ -29,32 +29,32 @@\n bcdefghij , h : \n-0\n+1\n  , t : 1 abcdef\n",
                  DMP.patch_to_text(patches)
@@ -162,19 +162,19 @@ class PatchTest < Minitest::Test
     # Both edges full.
     patches = DMP.patch_make('', 'test')
     assert_equal "@@ -0,0 +1,4 @@\n+test\n", DMP.patch_to_text(patches)
-    DMP.patch_add_padding(patches, options)
+    DMP.patch_add_padding!(patches, options)
     assert_equal "@@ -1,8 +1,12 @@\n %01%02%03%04\n+test\n %01%02%03%04\n", DMP.patch_to_text(patches)
 
     # Both edges partial.
     patches = DMP.patch_make('XY', 'XtestY')
     assert_equal "@@ -1,2 +1,6 @@\n X\n+test\n Y\n", DMP.patch_to_text(patches)
-    DMP.patch_add_padding(patches, options)
+    DMP.patch_add_padding!(patches, options)
     assert_equal "@@ -2,8 +2,12 @@\n %02%03%04X\n+test\n Y%01%02%03\n", DMP.patch_to_text(patches)
 
     # Both edges none.
     patches = DMP.patch_make('XXXXYYYY', 'XXXXtestYYYY')
     assert_equal "@@ -1,8 +1,12 @@\n XXXX\n+test\n YYYY\n", DMP.patch_to_text(patches)
-    DMP.patch_add_padding(patches, options)
+    DMP.patch_add_padding!(patches, options)
     assert_equal "@@ -5,8 +5,12 @@\n XXXX\n+test\n YYYY\n", DMP.patch_to_text(patches)
   end
 

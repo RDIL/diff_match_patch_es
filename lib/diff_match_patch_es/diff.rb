@@ -62,7 +62,7 @@ module DiffMatchPatchES
     diffs.unshift(create_diff(DIFF_EQUAL, commonprefix)) unless commonprefix.empty?
     diffs.push(create_diff(DIFF_EQUAL, commonsuffix)) unless commonsuffix.empty?
 
-    diff_cleanup_merge(diffs)
+    diff_cleanup_merge!(diffs)
     diffs
   end
 
@@ -126,9 +126,9 @@ module DiffMatchPatchES
     diffs = diff_main(text1, text2, options, false, deadline)
 
     # Convert the diff back to original text.
-    diff_chars_to_lines(diffs, linearray)
+    diff_chars_to_lines!(diffs, linearray)
     # Eliminate freak matches (e.g. blank lines)
-    diff_cleanup_semantic(diffs)
+    diff_cleanup_semantic!(diffs)
 
     # Re-diff any replacement blocks, this time character-by-character.
     # Add a dummy entry at the end.
@@ -355,7 +355,7 @@ module DiffMatchPatchES
 
   # Rehydrate the text in a diff from a string of line placeholders to real
   # lines of text.
-  def diff_chars_to_lines(diffs, line_array)
+  def diff_chars_to_lines!(diffs, line_array)
     diffs.each do |diff|
       chars = diff[1]
       text = +''
@@ -513,7 +513,7 @@ module DiffMatchPatchES
   end
 
   # Reduce the number of edits by eliminating semantically trivial equalities.
-  def diff_cleanup_semantic(diffs)
+  def diff_cleanup_semantic!(diffs)
     changes = false
     # Stack of indices where equalities are found. The reference
     # implementation lets the stack pointer go negative and stores into the
@@ -573,9 +573,9 @@ module DiffMatchPatchES
     end
 
     # Normalize the diff.
-    diff_cleanup_merge(diffs) if changes
+    diff_cleanup_merge!(diffs) if changes
 
-    diff_cleanup_semantic_lossless(diffs)
+    diff_cleanup_semantic_lossless!(diffs)
 
     # Find any overlaps between deletions and insertions.
     # e.g: <del>abcxxx</del><ins>xxxdef</ins>
@@ -665,7 +665,7 @@ module DiffMatchPatchES
   # Look for single edits surrounded on both sides by equalities
   # which can be shifted sideways to align the edit to a word boundary.
   # e.g: The c<ins>at c</ins>ame. -> The <ins>cat </ins>came.
-  def diff_cleanup_semantic_lossless(diffs)
+  def diff_cleanup_semantic_lossless!(diffs)
     pointer = 1
     # Intentionally ignore the first and last element (don't need checking).
     while pointer < diffs.length - 1
@@ -728,12 +728,12 @@ module DiffMatchPatchES
   end
 
   # Reduce the number of edits by eliminating operationally trivial equalities.
-  def diff_cleanup_efficiency(diffs, options = nil)
+  def diff_cleanup_efficiency!(diffs, options = nil)
     diff_edit_cost = resolve_options(options).diff_edit_cost
 
     changes = false
     # Stack of indices where equalities are found (Hash for the same
-    # negative-index reason as in diff_cleanup_semantic).
+    # negative-index reason as in diff_cleanup_semantic!).
     equalities = {}
     equalities_length = 0
     last_equality = nil
@@ -800,13 +800,13 @@ module DiffMatchPatchES
       pointer += 1
     end
 
-    diff_cleanup_merge(diffs) if changes
+    diff_cleanup_merge!(diffs) if changes
     nil
   end
 
   # Reorder and merge like edit sections.  Merge equalities.
   # Any edit section can move as long as it doesn't cross an equality.
-  def diff_cleanup_merge(diffs)
+  def diff_cleanup_merge!(diffs)
     # Add a dummy entry at the end.
     diffs.push(create_diff(DIFF_EQUAL, ''))
     pointer = 0
@@ -906,7 +906,7 @@ module DiffMatchPatchES
       pointer += 1
     end
     # If shifts were made, the diff needs reordering and another shift sweep.
-    diff_cleanup_merge(diffs) if changes
+    diff_cleanup_merge!(diffs) if changes
     nil
   end
 

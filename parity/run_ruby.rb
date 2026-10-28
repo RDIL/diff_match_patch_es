@@ -16,11 +16,11 @@ def run(c)
   r['diff_nolines'] = DiffMatchPatchES.diff_main(c['text1'], c['text2'], opts_fast, false)
 
   sem = DiffMatchPatchES.diff_main(c['text1'], c['text2'], opts_fast)
-  DiffMatchPatchES.diff_cleanup_semantic(sem)
+  DiffMatchPatchES.diff_cleanup_semantic!(sem)
   r['semantic'] = sem
 
   eff = DiffMatchPatchES.diff_main(c['text1'], c['text2'], opts_fast)
-  DiffMatchPatchES.diff_cleanup_efficiency(eff, opts_fast)
+  DiffMatchPatchES.diff_cleanup_efficiency!(eff, opts_fast)
   r['efficiency'] = eff
 
   r['delta'] = DiffMatchPatchES.diff_to_delta(r['diff_fast'])

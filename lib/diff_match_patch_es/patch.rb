@@ -63,7 +63,7 @@ module DiffMatchPatchES
 
   # Increase the context until it is unique,
   # but don't let the pattern expand beyond match_max_bits.
-  def patch_add_context(patch, text, options)
+  def patch_add_context!(patch, text, options)
     return if text.empty?
 
     raise Error, 'patch not initialized' if patch.start2.nil?
@@ -119,8 +119,8 @@ module DiffMatchPatchES
       text1 = a
       diffs = diff_main(text1, opt_b, resolved, true)
       if diffs.length > 2
-        diff_cleanup_semantic(diffs)
-        diff_cleanup_efficiency(diffs, resolved)
+        diff_cleanup_semantic!(diffs)
+        diff_cleanup_efficiency!(diffs, resolved)
       end
     elsif a.is_a?(Array) && opt_b.nil? && opt_c.nil?
       # Method 2: diffs
@@ -186,7 +186,7 @@ module DiffMatchPatchES
         elsif diff_text.length >= 2 * resolved.patch_margin
           # Time for a new patch.
           if patch_diff_length.positive?
-            patch_add_context(patch, prepatch_text, resolved)
+            patch_add_context!(patch, prepatch_text, resolved)
             patches.push(patch)
             patch = Patch.new
             patch_diff_length = 0
@@ -206,7 +206,7 @@ module DiffMatchPatchES
     end
     # Pick up the leftover patch if not empty.
     if patch_diff_length.positive?
-      patch_add_context(patch, prepatch_text, resolved)
+      patch_add_context!(patch, prepatch_text, resolved)
       patches.push(patch)
     end
 
@@ -235,10 +235,10 @@ module DiffMatchPatchES
     patches = patch_deep_copy(patches)
 
     resolved = resolve_options(options)
-    null_padding = patch_add_padding(patches, resolved)
+    null_padding = patch_add_padding!(patches, resolved)
     text = null_padding + text + null_padding
 
-    patch_split_max(patches, resolved)
+    patch_split_max!(patches, resolved)
     # delta keeps track of the offset between the expected and actual
     # location of the previous patch.  If there are patches expected at
     # positions 10 and 20, but the first patch was found at 12, delta is 2
@@ -250,7 +250,7 @@ module DiffMatchPatchES
       text1 = diff_text1(patch.diffs)
       end_loc = -1
       if text1.length > resolved.match_max_bits
-        # patch_split_max will only provide an oversized pattern in the case
+        # patch_split_max! will only provide an oversized pattern in the case
         # of a monster delete.
         start_loc = match_main(
           text,
@@ -302,7 +302,7 @@ module DiffMatchPatchES
             # The end points match, but the content is unacceptably bad.
             results[x] = false
           else
-            diff_cleanup_semantic_lossless(diffs)
+            diff_cleanup_semantic_lossless!(diffs)
             index1 = 0
             index2 = 0
             patch.diffs.each do |mod|
@@ -328,7 +328,7 @@ module DiffMatchPatchES
   # Add some padding on text start and end so that edges can match something.
   # Intended to be called only from within patch_apply.
   # Returns the padding string added to each side.
-  def patch_add_padding(patches, options = nil)
+  def patch_add_padding!(patches, options = nil)
     padding_length = resolve_options(options).patch_margin
     null_padding = +''
     (1..padding_length).each { |x| null_padding << x.chr(Encoding::UTF_8) }
@@ -381,7 +381,7 @@ module DiffMatchPatchES
   # Look through the patches and break up any which are longer than the
   # maximum limit of the match algorithm.
   # Intended to be called only from within patch_apply.
-  def patch_split_max(patches, options = nil)
+  def patch_split_max!(patches, options = nil)
     resolved = resolve_options(options)
     x = 0
     while x < patches.length

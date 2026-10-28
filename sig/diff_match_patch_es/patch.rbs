@@ -24,7 +24,7 @@ module DiffMatchPatchES
 
   # Increase the context until it is unique, but don't let the pattern
   # expand beyond match_max_bits. Mutates patch in place.
-  def self?.patch_add_context: (Patch patch, String text, options_arg options) -> nil
+  def self?.patch_add_context!: (Patch patch, String text, options_arg options) -> nil
 
   # Compute a list of patches to turn text1 into text2.
   # Method 1: a = text1, b = text2
@@ -45,11 +45,11 @@ module DiffMatchPatchES
 
   # Add some padding on text start and end so that edges can match
   # something. Returns the padding string added to each side.
-  def self?.patch_add_padding: (Array[Patch] patches, ?options_arg options) -> String
+  def self?.patch_add_padding!: (Array[Patch] patches, ?options_arg options) -> String
 
   # Look through the patches and break up any which are longer than the
   # maximum limit of the match algorithm. Mutates patches in place.
-  def self?.patch_split_max: (Array[Patch] patches, ?options_arg options) -> nil
+  def self?.patch_split_max!: (Array[Patch] patches, ?options_arg options) -> nil
 
   # Take a list of patches and return a textual representation.
   def self?.patch_to_text: (Array[Patch] patches) -> String

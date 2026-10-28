@@ -10,6 +10,10 @@ require 'diff_match_patch_es'
 diffs = DiffMatchPatchES.diff_main('Apples are a fruit.', 'Bananas are also fruit.')
 # => [[-1, "Apple"], [1, "Banana"], [0, "s are a"], [1, "lso"], [0, " fruit."]]
 
+diffs = DiffMatchPatchES.diff_main('mouse', 'sofas')
+DiffMatchPatchES.diff_cleanup_semantic!(diffs)
+diffs # => [[-1, "mouse"], [1, "sofas"]]
+
 patches = DiffMatchPatchES.patch_make('The quick brown fox.', 'The slow green fox.')
 text = DiffMatchPatchES.patch_to_text(patches)
 DiffMatchPatchES.patch_apply(DiffMatchPatchES.patch_from_text(text), 'The quick brown fox.')
@@ -19,6 +23,7 @@ DiffMatchPatchES.match_main('abcdefghijk', 'fgh', 5) # => 5
 ```
 
 Every exported function of the JS package has a snake_case equivalent (`diffMain` -> `diff_main`, `patchApply` -> `patch_apply`, …), plus the short aliases `diff`, `match`, and `patch`.
+Functions that mutate an argument in place additionally end in a bang: `diff_cleanup_semantic!`, `diff_cleanup_efficiency!`, `diff_cleanup_merge!`, `diff_cleanup_semantic_lossless!`, `diff_chars_to_lines!`, `patch_add_context!`, `patch_add_padding!`, and `patch_split_max!`.
 Diffs are `[op, text]` arrays with the ops `DIFF_DELETE` (-1), `DIFF_EQUAL` (0), and `DIFF_INSERT` (1); patches are `DiffMatchPatchES::Patch` objects whose `#to_s` emits the GNU-diff-style  format.
 
 Options are passed as a trailing hash (or a resolved `DiffMatchPatchES::Options`), mirroring the JS option names:

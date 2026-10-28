@@ -126,7 +126,7 @@ class DiffTest < Minitest::Test
   def test_diff_chars_to_lines
     # Convert chars up to lines.
     diffs = [[DIFF_EQUAL, "\x01\x02\x01"], [DIFF_INSERT, "\x02\x01\x02"]]
-    DMP.diff_chars_to_lines(diffs, ['', "alpha\n", "beta\n"])
+    DMP.diff_chars_to_lines!(diffs, ['', "alpha\n", "beta\n"])
     assert_equal [[DIFF_EQUAL, "alpha\nbeta\nalpha\n"], [DIFF_INSERT, "beta\nalpha\nbeta\n"]], diffs
 
     # More than 256 to reveal any 8-bit limitations.
@@ -140,7 +140,7 @@ class DiffTest < Minitest::Test
     line_list.unshift('')
 
     diffs = [[DIFF_DELETE, chars]]
-    DMP.diff_chars_to_lines(diffs, line_list)
+    DMP.diff_chars_to_lines!(diffs, line_list)
     assert_equal [[DIFF_DELETE, lines]], diffs
 
     # More than 65536 to verify any 16-bit limitation.
@@ -148,7 +148,7 @@ class DiffTest < Minitest::Test
     chars = line_list.join
     results = DMP.diff_lines_to_chars(chars, '')
     diffs = [[DIFF_INSERT, results[:chars1]]]
-    DMP.diff_chars_to_lines(diffs, results[:line_array])
+    DMP.diff_chars_to_lines!(diffs, results[:line_array])
     assert_equal chars, diffs[0][1]
   end
 
@@ -156,73 +156,73 @@ class DiffTest < Minitest::Test
     # Cleanup a messy diff.
     # Null case.
     diffs = []
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_empty diffs
 
     # No change case.
     diffs = [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'b'], [DIFF_INSERT, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'b'], [DIFF_INSERT, 'c']], diffs
 
     # Merge equalities.
     diffs = [[DIFF_EQUAL, 'a'], [DIFF_EQUAL, 'b'], [DIFF_EQUAL, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'abc']], diffs
 
     # Merge deletions.
     diffs = [[DIFF_DELETE, 'a'], [DIFF_DELETE, 'b'], [DIFF_DELETE, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_DELETE, 'abc']], diffs
 
     # Merge insertions.
     diffs = [[DIFF_INSERT, 'a'], [DIFF_INSERT, 'b'], [DIFF_INSERT, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_INSERT, 'abc']], diffs
 
     # Merge interweave.
     diffs = [[DIFF_DELETE, 'a'], [DIFF_INSERT, 'b'], [DIFF_DELETE, 'c'], [DIFF_INSERT, 'd'],
              [DIFF_EQUAL, 'e'], [DIFF_EQUAL, 'f']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_DELETE, 'ac'], [DIFF_INSERT, 'bd'], [DIFF_EQUAL, 'ef']], diffs
 
     # Prefix and suffix detection.
     diffs = [[DIFF_DELETE, 'a'], [DIFF_INSERT, 'abc'], [DIFF_DELETE, 'dc']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'd'], [DIFF_INSERT, 'b'], [DIFF_EQUAL, 'c']], diffs
 
     # Prefix and suffix detection with equalities.
     diffs = [[DIFF_EQUAL, 'x'], [DIFF_DELETE, 'a'], [DIFF_INSERT, 'abc'], [DIFF_DELETE, 'dc'], [DIFF_EQUAL, 'y']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'xa'], [DIFF_DELETE, 'd'], [DIFF_INSERT, 'b'], [DIFF_EQUAL, 'cy']], diffs
 
     # Slide edit left.
     diffs = [[DIFF_EQUAL, 'a'], [DIFF_INSERT, 'ba'], [DIFF_EQUAL, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_INSERT, 'ab'], [DIFF_EQUAL, 'ac']], diffs
 
     # Slide edit right.
     diffs = [[DIFF_EQUAL, 'c'], [DIFF_INSERT, 'ab'], [DIFF_EQUAL, 'a']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'ca'], [DIFF_INSERT, 'ba']], diffs
 
     # Slide edit left recursive.
     diffs = [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'b'], [DIFF_EQUAL, 'c'], [DIFF_DELETE, 'ac'], [DIFF_EQUAL, 'x']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_DELETE, 'abc'], [DIFF_EQUAL, 'acx']], diffs
 
     # Slide edit right recursive.
     diffs = [[DIFF_EQUAL, 'x'], [DIFF_DELETE, 'ca'], [DIFF_EQUAL, 'c'], [DIFF_DELETE, 'b'], [DIFF_EQUAL, 'a']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_EQUAL, 'xca'], [DIFF_DELETE, 'cba']], diffs
 
     # Empty merge.
     diffs = [[DIFF_DELETE, 'b'], [DIFF_INSERT, 'ab'], [DIFF_EQUAL, 'c']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_INSERT, 'a'], [DIFF_EQUAL, 'bc']], diffs
 
     # Empty equality.
     diffs = [[DIFF_EQUAL, ''], [DIFF_INSERT, 'a'], [DIFF_EQUAL, 'b']]
-    DMP.diff_cleanup_merge(diffs)
+    DMP.diff_cleanup_merge!(diffs)
     assert_equal [[DIFF_INSERT, 'a'], [DIFF_EQUAL, 'b']], diffs
   end
 
@@ -230,42 +230,42 @@ class DiffTest < Minitest::Test
     # Cleanup semantically trivial equalities.
     # Null case.
     diffs = []
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_empty diffs
 
     # Blank lines.
     diffs = [[DIFF_EQUAL, "AAA\r\n\r\nBBB"], [DIFF_INSERT, "\r\nDDD\r\n\r\nBBB"], [DIFF_EQUAL, "\r\nEEE"]]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, "AAA\r\n\r\n"], [DIFF_INSERT, "BBB\r\nDDD\r\n\r\n"], [DIFF_EQUAL, "BBB\r\nEEE"]], diffs
 
     # Line boundaries.
     diffs = [[DIFF_EQUAL, "AAA\r\nBBB"], [DIFF_INSERT, " DDD\r\nBBB"], [DIFF_EQUAL, ' EEE']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, "AAA\r\n"], [DIFF_INSERT, "BBB DDD\r\n"], [DIFF_EQUAL, 'BBB EEE']], diffs
 
     # Word boundaries.
     diffs = [[DIFF_EQUAL, 'The c'], [DIFF_INSERT, 'ow and the c'], [DIFF_EQUAL, 'at.']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, 'The '], [DIFF_INSERT, 'cow and the '], [DIFF_EQUAL, 'cat.']], diffs
 
     # Alphanumeric boundaries.
     diffs = [[DIFF_EQUAL, 'The-c'], [DIFF_INSERT, 'ow-and-the-c'], [DIFF_EQUAL, 'at.']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, 'The-'], [DIFF_INSERT, 'cow-and-the-'], [DIFF_EQUAL, 'cat.']], diffs
 
     # Hitting the start.
     diffs = [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'a'], [DIFF_EQUAL, 'ax']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_DELETE, 'a'], [DIFF_EQUAL, 'aax']], diffs
 
     # Hitting the end.
     diffs = [[DIFF_EQUAL, 'xa'], [DIFF_DELETE, 'a'], [DIFF_EQUAL, 'a']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, 'xaa'], [DIFF_DELETE, 'a']], diffs
 
     # Sentence boundaries.
     diffs = [[DIFF_EQUAL, 'The xxx. The '], [DIFF_INSERT, 'zzz. The '], [DIFF_EQUAL, 'yyy.']]
-    DMP.diff_cleanup_semantic_lossless(diffs)
+    DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, 'The xxx.'], [DIFF_INSERT, ' The zzz.'], [DIFF_EQUAL, ' The yyy.']], diffs
   end
 
@@ -273,59 +273,59 @@ class DiffTest < Minitest::Test
     # Cleanup semantically trivial equalities.
     # Null case.
     diffs = []
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_empty diffs
 
     # No elimination #1.
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_INSERT, 'cd'], [DIFF_EQUAL, '12'], [DIFF_DELETE, 'e']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'ab'], [DIFF_INSERT, 'cd'], [DIFF_EQUAL, '12'], [DIFF_DELETE, 'e']], diffs
 
     # No elimination #2.
     diffs = [[DIFF_DELETE, 'abc'], [DIFF_INSERT, 'ABC'], [DIFF_EQUAL, '1234'], [DIFF_DELETE, 'wxyz']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abc'], [DIFF_INSERT, 'ABC'], [DIFF_EQUAL, '1234'], [DIFF_DELETE, 'wxyz']], diffs
 
     # Simple elimination.
     diffs = [[DIFF_DELETE, 'a'], [DIFF_EQUAL, 'b'], [DIFF_DELETE, 'c']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abc'], [DIFF_INSERT, 'b']], diffs
 
     # Backpass elimination.
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_EQUAL, 'cd'], [DIFF_DELETE, 'e'], [DIFF_EQUAL, 'f'], [DIFF_INSERT, 'g']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abcdef'], [DIFF_INSERT, 'cdfg']], diffs
 
     # Multiple eliminations.
     diffs = [[DIFF_INSERT, '1'], [DIFF_EQUAL, 'A'], [DIFF_DELETE, 'B'], [DIFF_INSERT, '2'], [DIFF_EQUAL, '_'],
              [DIFF_INSERT, '1'], [DIFF_EQUAL, 'A'], [DIFF_DELETE, 'B'], [DIFF_INSERT, '2']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'AB_AB'], [DIFF_INSERT, '1A2_1A2']], diffs
 
     # Word boundaries.
     diffs = [[DIFF_EQUAL, 'The c'], [DIFF_DELETE, 'ow and the c'], [DIFF_EQUAL, 'at.']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_EQUAL, 'The '], [DIFF_DELETE, 'cow and the '], [DIFF_EQUAL, 'cat.']], diffs
 
     # No overlap elimination.
     diffs = [[DIFF_DELETE, 'abcxx'], [DIFF_INSERT, 'xxdef']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abcxx'], [DIFF_INSERT, 'xxdef']], diffs
 
     # Overlap elimination.
     diffs = [[DIFF_DELETE, 'abcxxx'], [DIFF_INSERT, 'xxxdef']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abc'], [DIFF_EQUAL, 'xxx'], [DIFF_INSERT, 'def']], diffs
 
     # Reverse overlap elimination.
     diffs = [[DIFF_DELETE, 'xxxabc'], [DIFF_INSERT, 'defxxx']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_INSERT, 'def'], [DIFF_EQUAL, 'xxx'], [DIFF_DELETE, 'abc']], diffs
 
     # Two overlap eliminations.
     diffs = [[DIFF_DELETE, 'abcd1212'], [DIFF_INSERT, '1212efghi'], [DIFF_EQUAL, '----'],
              [DIFF_DELETE, 'A3'], [DIFF_INSERT, '3BC']]
-    DMP.diff_cleanup_semantic(diffs)
+    DMP.diff_cleanup_semantic!(diffs)
     assert_equal [[DIFF_DELETE, 'abcd'], [DIFF_EQUAL, '1212'], [DIFF_INSERT, 'efghi'], [DIFF_EQUAL, '----'],
                   [DIFF_DELETE, 'A'], [DIFF_EQUAL, '3'], [DIFF_INSERT, 'BC']], diffs
   end
@@ -335,35 +335,35 @@ class DiffTest < Minitest::Test
 
     # Null case.
     diffs = []
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_empty diffs
 
     # No elimination.
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_INSERT, '12'], [DIFF_EQUAL, 'wxyz'], [DIFF_DELETE, 'cd'], [DIFF_INSERT, '34']]
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_equal [[DIFF_DELETE, 'ab'], [DIFF_INSERT, '12'], [DIFF_EQUAL, 'wxyz'], [DIFF_DELETE, 'cd'],
                   [DIFF_INSERT, '34']], diffs
 
     # Four-edit elimination.
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_INSERT, '12'], [DIFF_EQUAL, 'xyz'], [DIFF_DELETE, 'cd'], [DIFF_INSERT, '34']]
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_equal [[DIFF_DELETE, 'abxyzcd'], [DIFF_INSERT, '12xyz34']], diffs
 
     # Three-edit elimination.
     diffs = [[DIFF_INSERT, '12'], [DIFF_EQUAL, 'x'], [DIFF_DELETE, 'cd'], [DIFF_INSERT, '34']]
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_equal [[DIFF_DELETE, 'xcd'], [DIFF_INSERT, '12x34']], diffs
 
     # Backpass elimination.
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_INSERT, '12'], [DIFF_EQUAL, 'xy'], [DIFF_INSERT, '34'], [DIFF_EQUAL, 'z'],
              [DIFF_DELETE, 'cd'], [DIFF_INSERT, '56']]
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_equal [[DIFF_DELETE, 'abxyzcd'], [DIFF_INSERT, '12xy34z56']], diffs
 
     # High cost elimination.
     options.diff_edit_cost = 5
     diffs = [[DIFF_DELETE, 'ab'], [DIFF_INSERT, '12'], [DIFF_EQUAL, 'wxyz'], [DIFF_DELETE, 'cd'], [DIFF_INSERT, '34']]
-    DMP.diff_cleanup_efficiency(diffs, options)
+    DMP.diff_cleanup_efficiency!(diffs, options)
     assert_equal [[DIFF_DELETE, 'abwxyzcd'], [DIFF_INSERT, '12wxyz34']], diffs
   end
 
