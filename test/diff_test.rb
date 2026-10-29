@@ -475,6 +475,28 @@ class DiffTest < Minitest::Test
 
     # Timeout.
     assert_equal [[DIFF_DELETE, 'cat'], [DIFF_INSERT, 'map']], DMP.diff_bisect(a, b, options, 0)
+
+    # Multi-byte characters compare by code point.
+    assert_equal [[DIFF_DELETE, 'c'], [DIFF_INSERT, 'm'], [DIFF_EQUAL, 'é'], [DIFF_DELETE, '😀'], [DIFF_INSERT, 'p']],
+                 DMP.diff_bisect('cé😀', 'mép', options, Float::MAX)
+
+    # Invalid byte sequences have no code points; equality still works per character.
+    a = "c\xFFt".dup.force_encoding(Encoding::UTF_8)
+    b = "m\xFFp".dup.force_encoding(Encoding::UTF_8)
+    refute a.valid_encoding?
+    assert_equal [[DIFF_DELETE, 'c'], [DIFF_INSERT, 'm'], [DIFF_EQUAL, a[1]], [DIFF_DELETE, 't'], [DIFF_INSERT, 'p']],
+                 DMP.diff_bisect(a, b, options, Float::MAX)
+  end
+
+  def test_diff_bisect_units
+    refute_respond_to DMP, :diff_bisect_units
+    assert_equal [[99, 97, 116], [109, 97, 112]], DMP.send(:diff_bisect_units, 'cat', 'map')
+    assert_equal [[99, 233, 0x1F600], [109, 233, 112]], DMP.send(:diff_bisect_units, 'cé😀', 'mép')
+
+    invalid = "c\xFFt".dup.force_encoding(Encoding::UTF_8)
+    units1, units2 = DMP.send(:diff_bisect_units, invalid, 'map')
+    assert_equal ['c', invalid[1], 't'], units1
+    assert_equal %w[m a p], units2
   end
 
   def test_diff_main
@@ -545,9 +567,9 @@ class DiffTest < Minitest::Test
       a += a
       b += b
     end
-    start_time = DMP.now_ms
+    start_time = DMP.send(:now_ms)
     DMP.diff_main(a, b, options)
-    end_time = DMP.now_ms
+    end_time = DMP.send(:now_ms)
     # Test that we took at least the timeout period.
     assert_operator options.diff_timeout * 1000, :<=, end_time - start_time
     # Test that we didn't take forever (be forgiving).

@@ -22,7 +22,7 @@ module DiffMatchPatchES
 
   def self?.create_diff: (op operation, String text) -> diff
 
-  def self?.now_ms: () -> Float
+  private def self.now_ms: () -> Float
 
   # Find the differences between two texts.
   def self?.diff_main: (String text1, String text2, ?options_arg options, ?bool checklines, ?Numeric? deadline) -> Array[diff]
@@ -42,9 +42,13 @@ module DiffMatchPatchES
   # Given the location of the 'middle snake', split the diff in two parts and recurse.
   def self?.diff_bisect_split: (String text1, String text2, Options options, Integer x, Integer y, Numeric deadline) -> Array[diff]
 
-  def self?.line_char_for: (Integer index) -> String
+  # Both texts as Arrays of Integer code points (or of one-character Strings
+  # when either text has an invalid byte sequence) for diff_bisect's hot loops.
+  private def self.diff_bisect_units: (String text1, String text2) -> [Array[Integer] | Array[String], Array[Integer] | Array[String]]
 
-  def self?.line_index_for: (String char) -> Integer
+  private def self.line_char_for: (Integer index) -> String
+
+  private def self.line_index_for: (String char) -> Integer
 
   # Split two texts into an array of strings.
   # Reduce the texts to a string of placeholder characters where each character represents one line.

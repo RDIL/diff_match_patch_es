@@ -22,6 +22,7 @@ module DiffMatchPatchES
   def now_ms
     Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
   end
+  private_class_method :now_ms
 
   # Find the differences between two texts.
   def diff_main(text1, text2, options = nil, checklines = true, deadline = nil)
@@ -177,6 +178,8 @@ module DiffMatchPatchES
     # Cache the text lengths to prevent multiple calls.
     text1_length = text1.length
     text2_length = text2.length
+    # Avoid allocations by comparing codepoints below instead of strings
+    units1, units2 = diff_bisect_units(text1, text2)
     max_d = (text1_length + text2_length + 1) / 2
     v_offset = max_d
     v_length = 2 * max_d
@@ -209,7 +212,7 @@ module DiffMatchPatchES
                v1[k1_offset - 1] + 1
              end
         y1 = x1 - k1
-        while x1 < text1_length && y1 < text2_length && text1[x1] == text2[y1]
+        while x1 < text1_length && y1 < text2_length && units1[x1] == units2[y1]
           x1 += 1
           y1 += 1
         end
@@ -245,7 +248,7 @@ module DiffMatchPatchES
              end
         y2 = x2 - k2
         while x2 < text1_length && y2 < text2_length &&
-              text1[text1_length - x2 - 1] == text2[text2_length - y2 - 1]
+              units1[text1_length - x2 - 1] == units2[text2_length - y2 - 1]
           x2 += 1
           y2 += 1
         end
@@ -293,15 +296,26 @@ module DiffMatchPatchES
     diffs.concat(diffsb)
   end
 
+  def diff_bisect_units(text1, text2)
+    if text1.valid_encoding? && text2.valid_encoding?
+      [text1.codepoints, text2.codepoints]
+    else
+      [text1.chars, text2.chars]
+    end
+  end
+  private_class_method :diff_bisect_units
+
   def line_char_for(index)
     codepoint = index < 0xD800 ? index : index + LINE_INDEX_SURROGATE_SHIFT
     codepoint.chr(Encoding::UTF_8)
   end
+  private_class_method :line_char_for
 
   def line_index_for(char)
     codepoint = char.ord
     codepoint < 0xD800 ? codepoint : codepoint - LINE_INDEX_SURROGATE_SHIFT
   end
+  private_class_method :line_index_for
 
   # Split two texts into an array of strings. Reduce the texts to a string of
   # placeholder characters where each character represents one line.
