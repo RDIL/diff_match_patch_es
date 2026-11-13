@@ -89,11 +89,29 @@ module DiffMatchPatchES
       start = [1, loc - bin_mid + 1].max
       finish = [loc + bin_mid, text.length].min + pattern.length
 
+      if d.zero?
+        # Later passes scan inside this first window, and a match above loc
+        # lowers start by at most pattern.length. Convert the window to code
+        # points once: text[j - 1] allocates a String per step and scans
+        # multi-byte text from its start.
+        units_offset = [1, start - pattern.length].max - 1
+        window = JsString.substring(text, units_offset, finish)
+        if window.valid_encoding? && pattern.valid_encoding?
+          units = window.codepoints
+          units_table = s.transform_keys(&:ord)
+        else
+          # Invalid byte sequences have no code points, so we compare characters.
+          units = window.chars
+          units_table = s
+        end
+      end
+
       rd = Array.new(finish + 2, 0)
       rd[finish + 1] = ((1 << d) - 1) & MASK32
       j = finish
       while j >= start
-        char_match = s[JsString.char_at(text, j - 1)] || 0
+        # Past the end of the text nothing matches, as with charAt.
+        char_match = units_table[units[j - 1 - units_offset]] || 0
         rd[j] = if d.zero? # First pass: exact match.
                   (((rd[j + 1] << 1) | 1) & char_match) & MASK32
                 else # Subsequent passes: fuzzy match.

@@ -84,4 +84,27 @@ class MatchTest < Minitest::Test
     err = assert_raises(DMP::Error) { DMP.match_main(nil, nil, 0, options) }
     assert_equal 'Null input. (match_main)', err.message
   end
+
+  def invalid_utf8(bytes)
+    bytes.dup.force_encoding(Encoding::UTF_8)
+  end
+
+  def test_match_bitap_multibyte
+    options = DMP.resolve_options(match_distance: 100, match_threshold: 0.5)
+    text = "#{'αβγδεζηθικλμνξοπρστυφχψω' * 20}😀😁😂🤣"
+    assert_equal 5, DMP.match_bitap(text, 'ζηθ', 5, options)
+    assert_equal 461, DMP.match_bitap(text, 'ζηXικ', 477, options)
+    assert_equal 481, DMP.match_bitap(text, '😁😂', 450, options)
+    assert_equal 478, DMP.match_main(text, 'ψω😀😁😂', text.length)
+
+    # Invalid byte sequences match as single characters.
+    bad = invalid_utf8("ab\xFFcd\xFFef")
+    assert_equal 2, DMP.match_bitap(bad, invalid_utf8("\xFFcd"), 0, options)
+    assert_equal 3, DMP.match_bitap(bad, 'cdX', 0, options)
+    assert_equal(-1, DMP.match_bitap('abcdef', invalid_utf8("c\xFF"), 0, options))
+
+    # A scan window that ends between two stray bytes keeps them separate.
+    narrow = DMP.resolve_options(match_distance: 0, match_threshold: 0.5)
+    assert_equal 1, DMP.match_bitap(invalid_utf8("ab\xE2\x82cd"), invalid_utf8("b\xE2Z"), 1, narrow)
+  end
 end
