@@ -18,6 +18,10 @@ class DiffTest < Minitest::Test
     [text1, text2]
   end
 
+  def invalid_utf8(bytes)
+    bytes.dup.force_encoding(Encoding::UTF_8)
+  end
+
   def test_diff_common_prefix
     # Detect any common prefix.
     # Null case.
@@ -121,6 +125,22 @@ class DiffTest < Minitest::Test
     line_list.unshift('')
     assert_equal({ chars1: chars, chars2: '', line_array: line_list },
                  DMP.diff_lines_to_chars(lines, ''))
+  end
+
+  def test_diff_lines_to_chars_multibyte
+    # Lines are found by byte offset; multi-byte characters stay whole.
+    assert_equal({ chars1: "\x01\x02\x01", chars2: "\x02\x03", line_array: ['', "café\n", "日本語 😀\n", 'é'] },
+                 DMP.diff_lines_to_chars("café\n日本語 😀\ncafé\n", "日本語 😀\né"))
+
+    # A line that starts with a stray continuation byte is still its own line.
+    assert_equal({ chars1: "\x01\x02", chars2: "\x02", line_array: ['', "a\n", invalid_utf8("\x80b\n")] },
+                 DMP.diff_lines_to_chars(invalid_utf8("a\n\x80b\n"), invalid_utf8("\x80b\n")))
+
+    # Text in an ASCII-incompatible encoding is rejected, with or without invalid bytes.
+    assert_raises(Encoding::CompatibilityError) { DMP.diff_lines_to_chars("a\nb".encode(Encoding::UTF_16LE), '') }
+    assert_raises(Encoding::CompatibilityError) do
+      DMP.diff_lines_to_chars("a\nb".b.force_encoding(Encoding::UTF_16LE), '')
+    end
   end
 
   def test_diff_chars_to_lines
@@ -601,5 +621,13 @@ class DiffTest < Minitest::Test
     # Test null inputs.
     err = assert_raises(DMP::Error) { DMP.diff_main(nil, nil, options) }
     assert_equal 'Null input. (diff_main)', err.message
+  end
+
+  def test_diff_main_multibyte_line_mode
+    text1 = (1..300).map { |i| "ligne #{i} café 日本語 😀\n" }.join
+    text2 = text1.sub('ligne 42 ', 'ligne quarante-deux ').sub('ligne 200 café', 'ligne 200 thé')
+    diffs = DMP.diff_main(text1, text2, diff_timeout: 0)
+    assert_operator diffs.length, :>, 1
+    assert_equal [text1, text2], diff_rebuild_texts(diffs)
   end
 end

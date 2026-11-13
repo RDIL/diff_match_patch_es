@@ -333,14 +333,20 @@ module DiffMatchPatchES
     munge = lambda do |text|
       chars = +''
       # Walk the text, pulling out a substring for each line.
+      text_size = text.bytesize
+      # byteindex refuses an offset it considers mid-character, which just
+      # after a "\n" can only happen when the next byte is a stray UTF-8
+      # continuation byte in text with invalid sequences; search a binary
+      # view of such text instead (byteslice has no such check).
+      haystack = !text.valid_encoding? && text.encoding.ascii_compatible? ? text.b : text
       line_start = 0
       line_end = -1
       line_array_length = line_array.length
-      while line_end < text.length - 1
-        line_end = text.index("\n", line_start) || -1
-        line_end = text.length - 1 if line_end == -1
+      while line_end < text_size - 1
+        line_end = haystack.byteindex("\n", line_start) || -1
+        line_end = text_size - 1 if line_end == -1
 
-        line = JsString.substring(text, line_start, line_end + 1)
+        line = text.byteslice(line_start, line_end + 1 - line_start)
 
         if line_hash.key?(line)
           chars << line_char_for(line_hash[line])
@@ -348,8 +354,8 @@ module DiffMatchPatchES
           if line_array_length == max_lines
             # Bail out at 65535 because
             # String.fromCharCode(65536) == String.fromCharCode(0)
-            line = JsString.substring(text, line_start)
-            line_end = text.length
+            line = text.byteslice(line_start, text_size - line_start)
+            line_end = text_size
           end
           chars << line_char_for(line_array_length)
           line_hash[line] = line_array_length
