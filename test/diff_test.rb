@@ -172,6 +172,20 @@ class DiffTest < Minitest::Test
     assert_equal chars, diffs[0][1]
   end
 
+  def test_diff_lines_to_chars_past_surrogates
+    # Line indices from 0xD800 up skip the surrogate code points, which UTF-8 cannot encode.
+    n = 56_000
+    lines = (1..n).map { |i| "#{i}\n" }.join
+    results = DMP.diff_lines_to_chars('', lines)
+    codepoints = results[:chars2].codepoints
+    assert_equal n, codepoints.length
+    assert_equal [0xD7FF, 0xE000, 0xE001], codepoints[0xD7FE, 3]
+
+    diffs = [[DIFF_INSERT, results[:chars2]]]
+    DMP.diff_chars_to_lines!(diffs, results[:line_array])
+    assert_equal lines, diffs[0][1]
+  end
+
   def test_diff_cleanup_merge
     # Cleanup a messy diff.
     # Null case.

@@ -305,14 +305,12 @@ module DiffMatchPatchES
   end
   private_class_method :diff_bisect_units
 
-  def line_char_for(index)
-    codepoint = index < 0xD800 ? index : index + LINE_INDEX_SURROGATE_SHIFT
-    codepoint.chr(Encoding::UTF_8)
+  def line_codepoint_for(index)
+    index < 0xD800 ? index : index + LINE_INDEX_SURROGATE_SHIFT
   end
-  private_class_method :line_char_for
+  private_class_method :line_codepoint_for
 
-  def line_index_for(char)
-    codepoint = char.ord
+  def line_index_for(codepoint)
     codepoint < 0xD800 ? codepoint : codepoint - LINE_INDEX_SURROGATE_SHIFT
   end
   private_class_method :line_index_for
@@ -349,7 +347,8 @@ module DiffMatchPatchES
         line = text.byteslice(line_start, line_end + 1 - line_start)
 
         if line_hash.key?(line)
-          chars << line_char_for(line_hash[line])
+          # Appending an Integer encodes the code point without allocating a String.
+          chars << line_codepoint_for(line_hash[line])
         else
           if line_array_length == max_lines
             # Bail out at 65535 because
@@ -357,7 +356,7 @@ module DiffMatchPatchES
             line = text.byteslice(line_start, text_size - line_start)
             line_end = text_size
           end
-          chars << line_char_for(line_array_length)
+          chars << line_codepoint_for(line_array_length)
           line_hash[line] = line_array_length
           line_array[line_array_length] = line
           line_array_length += 1
@@ -379,7 +378,12 @@ module DiffMatchPatchES
     diffs.each do |diff|
       chars = diff[1]
       text = +''
-      chars.each_char { |ch| text << line_array[line_index_for(ch)] }
+      if chars.valid_encoding?
+        # each_codepoint yields Integers. each_char allocates a String per placeholder.
+        chars.each_codepoint { |codepoint| text << line_array[line_index_for(codepoint)] }
+      else
+        chars.each_char { |ch| text << line_array[line_index_for(ch.ord)] }
+      end
       diff[1] = text
     end
     nil

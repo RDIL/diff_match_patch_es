@@ -46,9 +46,9 @@ module DiffMatchPatchES
   # when either text has an invalid byte sequence) for diff_bisect's hot loops.
   private def self.diff_bisect_units: (String text1, String text2) -> [Array[Integer] | Array[String], Array[Integer] | Array[String]]
 
-  private def self.line_char_for: (Integer index) -> String
+  private def self.line_codepoint_for: (Integer index) -> Integer
 
-  private def self.line_index_for: (String char) -> Integer
+  private def self.line_index_for: (Integer codepoint) -> Integer
 
   # Split two texts into an array of strings.
   # Reduce the texts to a string of placeholder characters where each character represents one line.
