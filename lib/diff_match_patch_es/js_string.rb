@@ -94,6 +94,18 @@ module DiffMatchPatchES
     # Characters whose escape sequences decodeURI refuses to decode
     # (uriReserved plus '#').
     DECODE_URI_RESERVED = ";/?:@&=+$,#"
+    # Runs of escaped bytes outside ASCII, which decode together as UTF-8.
+    DECODE_URI_WIDE = /(?:%[89A-Fa-f]\h)+/
+    # A '%' that does not begin the escape of an ASCII byte.
+    DECODE_URI_MALFORMED = /%(?![0-7]\h)/
+    # The escape of an ASCII byte, and what each one decodes to: its character,
+    # or the escape itself when the character is reserved.
+    DECODE_URI_ASCII = /%[0-7]\h/
+    DECODE_URI_ASCII_ESCAPES = [*'0'..'7'].product([*'0'..'9', *'A'..'F', *'a'..'f']).to_h do |digits|
+      escape = "%#{digits.join}".freeze
+      char = digits.join.hex.chr.freeze
+      [escape, DECODE_URI_RESERVED.include?(char) ? escape : char]
+    end.freeze
 
     # JS encodeURI: percent-encodes the UTF-8 bytes of every character outside
     # the unescaped set, using uppercase hex.
@@ -130,6 +142,22 @@ module DiffMatchPatchES
     # malformed, overlong, surrogate, and out-of-range sequences) while leaving
     # escapes of reserved characters (";/?:@&=+$,#") untouched.
     def decode_uri(str)
+      # Texts of a few bytes are quicker through the loop below.
+      if str.bytesize > 6 && (str.encoding == Encoding::UTF_8 ? str.valid_encoding? : str.ascii_only?)
+        # Multi-byte characters first: decoding them cannot produce a '%' for
+        # the next pass to misread, where decoding %25 can. Ruby's UTF-8
+        # validity rules are decodeURI's.
+        decoded = str.gsub(DECODE_URI_WIDE) do |run|
+          chars = [run.delete('%')].pack('H*').force_encoding(Encoding::UTF_8)
+          raise UriError, 'URI malformed' unless chars.valid_encoding?
+
+          chars
+        end
+        raise UriError, 'URI malformed' if decoded.match?(DECODE_URI_MALFORMED)
+
+        return decoded.gsub(DECODE_URI_ASCII, DECODE_URI_ASCII_ESCAPES).force_encoding(Encoding::UTF_8)
+      end
+
       out = +''
       i = 0
       n = str.length

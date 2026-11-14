@@ -12,6 +12,7 @@
 - Optimization: Substring search from an offset in multi-byte text slices off the tail instead of walking to the offset one character at a time, and a search from the start no longer counts the characters of the text.
 - Optimization: Backward substring search in valid UTF-8 text is a byte search instead of a walk to its start one character at a time.
 - Optimization: `patch_to_text` and `diff_to_delta` escape text in one pass over runs of escaped characters instead of testing and appending one character at a time.
+- Optimization: `patch_from_text` and `diff_from_delta` unescape text in two passes over its escapes instead of walking it one character at a time, which was quadratic for non-ASCII text.
 
 # v2.0.0
 

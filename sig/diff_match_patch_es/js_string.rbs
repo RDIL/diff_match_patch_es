@@ -11,6 +11,14 @@ module DiffMatchPatchES
 
     DECODE_URI_RESERVED: String
 
+    DECODE_URI_WIDE: Regexp
+
+    DECODE_URI_MALFORMED: Regexp
+
+    DECODE_URI_ASCII: Regexp
+
+    DECODE_URI_ASCII_ESCAPES: Hash[String, String]
+
     class UriError < StandardError
     end
 

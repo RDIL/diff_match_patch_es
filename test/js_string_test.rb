@@ -152,4 +152,43 @@ class JsStringTest < Minitest::Test
     assert_raises(ArgumentError) { JS.encode_uri("a\xFF".dup.force_encoding(Encoding::UTF_8)) }
     assert_raises(Encoding::CompatibilityError) { JS.encode_uri('a'.encode(Encoding::UTF_16LE)) }
   end
+
+  def test_decode_uri
+    assert_equal 'A', JS.decode_uri('%41')
+    assert_equal 'é', JS.decode_uri('%c3%a9')
+    assert_equal '€', JS.decode_uri('%E2%82%AC')
+    assert_equal '😀', JS.decode_uri('%F0%9F%98%80')
+    assert_equal 'é😀 /', JS.decode_uri(JS.encode_uri('é😀 /'))
+    assert_equal "line one\nline two\t100%", JS.decode_uri('line one%0Aline two%09100%25')
+    assert_equal '日本語 text 日本語', JS.decode_uri('日本語 text %E6%97%A5%E6%9C%AC%E8%AA%9E')
+
+    # Escapes of reserved characters are kept verbatim, including their case.
+    assert_equal '%2f', JS.decode_uri('%2f')
+    assert_equal 'A%2FB', JS.decode_uri('%41%2F%42')
+    assert_equal 'a%23b', JS.decode_uri('a%23b')
+    assert_equal 'path%2Fto%3fx%3D1 é', JS.decode_uri('path%2Fto%3fx%3D1%20%C3%A9')
+
+    # A decoded '%' never starts a new escape.
+    assert_equal '%41', JS.decode_uri('%2541')
+    assert_equal 'long text %C3%A9', JS.decode_uri('long text %25C3%25A9')
+
+    # Malformed: lone or truncated escapes, non-hex digits, overlong forms,
+    # surrogates, code points above U+10FFFF, and incomplete sequences.
+    %w[% %4 %4G %41% %C0%80 %ED%A0%80 %F4%90%80%80 %E2%82 %E2%82x %C3%2F %80 %ff].each do |bad|
+      assert_raises(JS::UriError, bad) { JS.decode_uri(bad) }
+      assert_raises(JS::UriError, bad) { JS.decode_uri("some longer text #{bad}") }
+    end
+
+    # The result is a new UTF-8 string, whatever the encoding of the text.
+    ascii = JS.decode_uri('plain %41SCII and %c3%a9'.encode(Encoding::US_ASCII))
+    assert_equal 'plain ASCII and é', ascii
+    assert_equal Encoding::UTF_8, ascii.encoding
+    assert_equal Encoding::UTF_8, JS.decode_uri('plain text'.b).encoding
+    assert_equal Encoding::UTF_8, JS.decode_uri(''.encode(Encoding::UTF_16LE)).encoding
+    refute_predicate JS.decode_uri('plain text'), :frozen?
+
+    # Invalid bytes pass through.
+    invalid = "\xFF%41 text".dup.force_encoding(Encoding::UTF_8)
+    assert_equal "\xFFA text".b, JS.decode_uri(invalid).b
+  end
 end
