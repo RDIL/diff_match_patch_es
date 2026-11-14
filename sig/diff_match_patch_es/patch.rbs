@@ -26,6 +26,9 @@ module DiffMatchPatchES
   # expand beyond match_max_bits. Mutates patch in place.
   def self?.patch_add_context!: (Patch patch, String text, options_arg options) -> nil
 
+  # Whether pattern occurs at two different places in text.
+  private def self.patch_context_repeated?: (String text, String pattern) -> bool
+
   # Compute a list of patches to turn text1 into text2.
   # Method 1: a = text1, b = text2
   # Method 2: a = diffs

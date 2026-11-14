@@ -77,7 +77,7 @@ module DiffMatchPatchES
 
     # Look for the first and last matches of pattern in text.  If two
     # different matches are found, increase the pattern length.
-    while JsString.index_of(text, pattern) != JsString.last_index_of(text, pattern, text.length) &&
+    while patch_context_repeated?(text, pattern) &&
           pattern.length < match_max_bits - patch_margin - patch_margin
       padding += patch_margin
       pattern = JsString.substring(text, patch.start2 - padding, patch.start2 + patch.length1 + padding)
@@ -101,6 +101,20 @@ module DiffMatchPatchES
     patch.length2 += prefix.length + suffix.length
     nil
   end
+
+  # Whether pattern occurs at two different places in text, which JS tests
+  # with indexOf != lastIndexOf. Byte offsets tell two matches apart as well
+  # as character indices do and skip the scans that compute those. Only for
+  # UTF-8: in encodings such as Shift_JIS a byte search can match inside a
+  # character.
+  def patch_context_repeated?(text, pattern)
+    if text.encoding == Encoding::UTF_8
+      text.byteindex(pattern) != text.byterindex(pattern)
+    else
+      JsString.index_of(text, pattern) != JsString.last_index_of(text, pattern, text.length)
+    end
+  end
+  private_class_method :patch_context_repeated?
 
   # Compute a list of patches to turn text1 into text2.
   # Use diffs if provided, otherwise compute it ourselves.

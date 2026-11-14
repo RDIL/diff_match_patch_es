@@ -70,6 +70,28 @@ class PatchTest < Minitest::Test
     assert_equal "@@ -1,27 +1,28 @@\n Th\n-e\n+at\n  quick brown fox jumps. \n", p.to_s
   end
 
+  def test_patch_add_context_multibyte
+    options = DMP.resolve_options({})
+
+    # Ambiguity in multi-byte text grows the context by characters.
+    p = DMP.patch_from_text("@@ -5,4 +5,4 @@\n-caf%C3%A9\n+th%C3%A9s\n")[0]
+    DMP.patch_add_context!(p, '日本語 café 日本語 café 日本語 fin', options)
+    assert_equal "@@ -1,20 +1,20 @@\n %E6%97%A5%E6%9C%AC%E8%AA%9E \n-caf%C3%A9\n+th%C3%A9s\n" \
+                 "  %E6%97%A5%E6%9C%AC%E8%AA%9E caf%C3%A9 %E6%97%A5%E6%9C%AC\n", p.to_s
+
+    p = DMP.patch_from_text("@@ -3,2 +3,2 @@\n-%F0%9F%98%80a\n+b\n")[0]
+    DMP.patch_add_context!(p, '😀a😀a😀a😀a😀a😀a😀a', options)
+    assert_equal "@@ -1,14 +1,14 @@\n %F0%9F%98%80a\n-%F0%9F%98%80a\n+b\n" \
+                 " %F0%9F%98%80a%F0%9F%98%80a%F0%9F%98%80a%F0%9F%98%80a%F0%9F%98%80a\n", p.to_s
+
+    # In Shift_JIS the last byte of this text is 0x41, the letter A, but it
+    # belongs to a two-byte character: the A at index 8 is not ambiguous.
+    p = DMP.patch_from_text("@@ -9 +9 @@\n-A\n+B\n")[0]
+    DMP.patch_add_context!(p, 'xxxxxxxxAyyyyyyyyア'.encode(Encoding::Shift_JIS), options)
+    assert_equal [4, 9], [p.start1, p.length1]
+    assert_equal [[DIFF_EQUAL, 'xxxx'], [DIFF_DELETE, 'A'], [DIFF_INSERT, 'B'], [DIFF_EQUAL, 'yyyy']], p.diffs
+  end
+
   def test_patch_make
     options = DMP.resolve_options({})
 
