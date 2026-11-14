@@ -2,6 +2,7 @@
 
 require_relative 'test_helper'
 
+# noinspection RbsMissingTypeSignature
 class MatchTest < Minitest::Test
   def test_match_alphabet
     # Initialise the bitmasks for Bitap.

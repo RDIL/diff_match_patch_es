@@ -2,6 +2,7 @@
 
 require_relative 'test_helper'
 
+# noinspection RbsMissingTypeSignature
 class PatchTest < Minitest::Test
   DIFF_DELETE = DMP::DIFF_DELETE
   DIFF_INSERT = DMP::DIFF_INSERT
