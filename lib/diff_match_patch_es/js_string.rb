@@ -50,6 +50,27 @@ module DiffMatchPatchES
 
     # JS String.prototype.lastIndexOf: the match may start at or before +from+.
     def last_index_of(str, pattern, from)
+      # String#rindex can read past the end of the text
+      # (https://bugs.ruby-lang.org/issues/22548), and it walks multi-byte text
+      # to its start one character at a time. Search by byte where that is exact.
+      # In ASCII-only text a character offset is a byte offset.
+      return str.byterindex(pattern, from.clamp(0, str.bytesize)) || -1 if str.ascii_only?
+
+      if str.encoding == Encoding::UTF_8 && pattern.encoding == Encoding::UTF_8 && str.valid_encoding?
+        size = str.bytesize
+        from = from.clamp(0, size)
+        tail = str[from, size] # nil when +from+ is past the last character.
+        limit = tail ? size - tail.bytesize : size
+        found = str.byterindex(pattern, limit)
+        return -1 unless found
+
+        # Turn the byte offset into a character index by counting the
+        # characters on the shorter side of the match.
+        return str.byteslice(0, found).length if found < limit - found
+
+        return (tail ? from : str.length) - str.byteslice(found, limit - found).length
+      end
+
       from = from.clamp(0, str.length)
       str.rindex(pattern, from) || -1
     end

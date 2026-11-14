@@ -84,4 +84,49 @@ class JsStringTest < Minitest::Test
       assert_raises(Encoding::CompatibilityError, from.to_s) { JS.index_of('日本語', utf16, from) }
     end
   end
+
+  def test_last_index_of
+    assert_equal 3, JS.last_index_of('abcabc', 'abc', 100)
+    assert_equal 3, JS.last_index_of('abcabc', 'abc', 3)
+    assert_equal 0, JS.last_index_of('abcabc', 'abc', 2)
+    assert_equal 0, JS.last_index_of('abc', 'a', -1)
+    assert_equal(-1, JS.last_index_of('abc', 'b', -1))
+    assert_equal(-1, JS.last_index_of('abc', 'd', 3))
+    assert_equal 4, JS.last_index_of('日本語日本語', '本', 4)
+    assert_equal 1, JS.last_index_of('日本語日本語', '本', 3)
+    assert_equal(-1, JS.last_index_of('日本語日本語', '本', 0))
+    assert_equal 3, JS.last_index_of('日本語日本語', '日本語', 9)
+
+    # An empty pattern matches at min(from, length).
+    assert_equal 3, JS.last_index_of('abc', '', 100)
+    assert_equal 2, JS.last_index_of('日本語', '', 2)
+    assert_equal 3, JS.last_index_of('日本語', '', 7)
+
+    # Offsets too large for a machine word.
+    assert_equal 2, JS.last_index_of('日本語', '語', 2**70)
+    assert_equal 0, JS.last_index_of('日本語', '日', -(2**70))
+    assert_equal(-1, JS.last_index_of('日本語', '語', -(2**70)))
+
+    # A pattern with more bytes than the text has left at the search start.
+    assert_equal(-1, JS.last_index_of('a' * 55, '😀' * 4, 55))
+    assert_equal 2, JS.last_index_of('aa😀😀a', '😀😀', 5)
+
+    # An invalid byte counts as one character.
+    invalid = "日\xFF本語本".dup.force_encoding(Encoding::UTF_8)
+    assert_equal 2, JS.last_index_of(invalid, '本', 3)
+    assert_equal 4, JS.last_index_of(invalid, '本', 9)
+
+    # A match starts on a character boundary: the second byte of "ソ" is a backslash.
+    sjis = "\\ソa".encode(Encoding::Shift_JIS)
+    assert_equal 0, JS.last_index_of(sjis, '\\'.encode(Encoding::Shift_JIS), 2)
+
+    # A pattern in another, compatible encoding.
+    assert_equal 4, JS.last_index_of('日本語abc', 'b'.encode(Encoding::US_ASCII), 5)
+
+    # Incompatible encodings raise wherever the search starts.
+    utf16 = '本'.encode(Encoding::UTF_16LE)
+    [0, 1, 3, 5, 20].each do |from|
+      assert_raises(Encoding::CompatibilityError, from.to_s) { JS.last_index_of('日本語', utf16, from) }
+    end
+  end
 end
