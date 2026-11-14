@@ -152,6 +152,13 @@ module DiffMatchPatchES
     # context info.
     prepatch_text = text1
     postpatch_text = text1
+    # Applying every diff to postpatch_text as it arrives copies the whole
+    # text per diff (JS ropes make that cheap). It is only read at a patch
+    # boundary, so when the encodings allow it the diffs since the last
+    # boundary are applied there in one pass.
+    one_pass = patch_uniform_encoding?(text1, diffs)
+    pending_from = 0 # First diff not yet applied to postpatch_text.
+    pending_offset = 0 # char_count2 at that diff.
     diffs.each_with_index do |diff, x|
       diff_type = diff[0]
       diff_text = diff[1]
@@ -167,14 +174,18 @@ module DiffMatchPatchES
         patch.diffs[patch_diff_length] = diff
         patch_diff_length += 1
         patch.length2 += diff_text.length
-        postpatch_text = JsString.substring(postpatch_text, 0, char_count2) + diff_text +
-                         JsString.substring(postpatch_text, char_count2)
+        unless one_pass
+          postpatch_text = JsString.substring(postpatch_text, 0, char_count2) + diff_text +
+                           JsString.substring(postpatch_text, char_count2)
+        end
       when DIFF_DELETE
         patch.length1 += diff_text.length
         patch.diffs[patch_diff_length] = diff
         patch_diff_length += 1
-        postpatch_text = JsString.substring(postpatch_text, 0, char_count2) +
-                         JsString.substring(postpatch_text, char_count2 + diff_text.length)
+        unless one_pass
+          postpatch_text = JsString.substring(postpatch_text, 0, char_count2) +
+                           JsString.substring(postpatch_text, char_count2 + diff_text.length)
+        end
       when DIFF_EQUAL
         if diff_text.length <= 2 * resolved.patch_margin &&
            patch_diff_length.positive? && diffs.length != x + 1
@@ -194,6 +205,11 @@ module DiffMatchPatchES
             # https://github.com/google/diff-match-patch/wiki/Unidiff
             # Update prepatch text & pos to reflect the application of the
             # just completed patch.
+            if one_pass
+              postpatch_text = patch_apply_pending(postpatch_text, pending_offset, diffs, pending_from, x)
+              pending_from = x
+              pending_offset = char_count2
+            end
             prepatch_text = postpatch_text
             char_count1 = char_count2
           end
@@ -212,6 +228,38 @@ module DiffMatchPatchES
 
     patches
   end
+
+  # Whether text and every diff text are valid in one shared encoding, so
+  # that joining and slicing them by character behaves as JS strings do.
+  def patch_uniform_encoding?(text, diffs)
+    encoding = text.encoding
+    text.valid_encoding? && diffs.all? { |(_, data)| data.encoding == encoding && data.valid_encoding? }
+  end
+  private_class_method :patch_uniform_encoding?
+
+  # Apply diffs[from...to] to text, where they start at character offset.
+  # Gives the same text as applying them one by one with JS substring,
+  # including its clamping of positions past the end of the text.
+  def patch_apply_pending(text, offset, diffs, from, to)
+    result = text[0, offset]
+    # Slicing the remainder from its own start keeps each step proportional
+    # to the diff, and a tail slice shares the text's buffer. (byteslice
+    # would lose the cached validity of multi-byte text and force a rescan.)
+    rest = text[offset..] || ''
+    (from...to).each do |index|
+      op, data = diffs[index]
+      if op == DIFF_INSERT
+        result << data
+      else
+        # Consume the next data.length characters; a deletion drops them.
+        length = data.length
+        result << rest[0, length] if op != DIFF_DELETE
+        rest = rest[length..] || ''
+      end
+    end
+    result << rest
+  end
+  private_class_method :patch_apply_pending
 
   # Given an array of patches, return another array that is identical.
   def patch_deep_copy(patches)

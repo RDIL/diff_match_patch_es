@@ -124,6 +124,39 @@ class PatchTest < Minitest::Test
     assert_equal 'Unknown call format to patch_make.', err.message
   end
 
+  def test_patch_make_multibyte
+    text1 = "un café noir\ndeux thés verts\ntrois 日本語 😀\nquatre croissants\ncinq crêpes\n"
+    text2 = text1.sub('café noir', 'café crème').sub('cinq crêpes', 'six crêpes 😁')
+    assert_equal "@@ -5,12 +5,13 @@\n af%C3%A9 \n-noir\n+cr%C3%A8me\n %0Adeu\n" \
+                 "@@ -57,16 +57,17 @@\n nts%0A\n-cinq\n+six\n  cr%C3%AApes\n+ %F0%9F%98%81\n %0A\n",
+                 DMP.patch_to_text(DMP.patch_make(text1, text2))
+  end
+
+  def test_patch_make_inconsistent_text
+    # Method 3 with a text1 that does not match the diffs: positions past the
+    # end of the text clamp, as JS substring does.
+    diffs = DMP.diff_main('The quick brown fox jumps over the lazy dog and keeps on running far away.',
+                          'The slow brown fox jumps over the lazy dog and keeps on walking far away.', diff_timeout: 0)
+    assert_equal "@@ -1,9 +1,8 @@\n The \n-quick\n+slow\n@@ -49,12 +49,12 @@\n The slow\n-runn\n+walk\n",
+                 DMP.patch_to_text(DMP.patch_make('The qu', diffs))
+    assert_equal "@@ -1,13 +1,12 @@\n The \n-quick\n+slow\n  bro\n@@ -52,9 +52,9 @@\n ox ju\n-runn\n+walk\n",
+                 DMP.patch_to_text(DMP.patch_make('The quick brown fox ju', diffs))
+    assert_equal "@@ -1,13 +1,12 @@\n Comp\n-quick\n+slow\n y di\n@@ -53,12 +53,12 @@\n the \n-runn\n+walk\n inal\n",
+                 DMP.patch_to_text(DMP.patch_make('Completely different words in here, about as long as the original was.',
+                                                  diffs))
+  end
+
+  def test_patch_make_mixed_encodings
+    # A text in another encoding than the diffs gives the same patches.
+    text1 = "The quick brown fox jumps over the lazy dog.\n" * 3
+    text2 = text1.sub('quick', 'slow').sub(/lazy dog\.\n\z/, "sleepy dog.\n")
+    diffs = DMP.diff_main(text1, text2, diff_timeout: 0)
+    expected = "@@ -1,29 +1,28 @@\n The \n-quick\n+slow\n  brown fox jumps ove\n" \
+               "@@ -105,30 +105,32 @@\n  fox jumps over the \n+s\n l\n-az\n+eep\n y dog.%0A\n"
+    assert_equal expected, DMP.patch_to_text(DMP.patch_make(text1, diffs))
+    assert_equal expected, DMP.patch_to_text(DMP.patch_make(text1.encode(Encoding::US_ASCII), diffs))
+  end
+
   def test_patch_split_max
     options = DMP.resolve_options({})
 

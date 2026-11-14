@@ -36,6 +36,13 @@ module DiffMatchPatchES
                       | (String a, Array[diff] opt_b, ?nil opt_c, ?options_arg options) -> Array[Patch]
                       | (String a, String opt_b, Array[diff] opt_c, ?options_arg options) -> Array[Patch]
 
+  # Whether text and every diff text are valid in one shared encoding.
+  private def self.patch_uniform_encoding?: (String text, Array[diff] diffs) -> bool
+
+  # The text that applying diffs[from...to] to text yields, where those diffs
+  # start at character offset.
+  private def self.patch_apply_pending: (String text, Integer offset, Array[diff] diffs, Integer from, Integer to) -> String
+
   # Given an array of patches, return another array that is identical.
   def self?.patch_deep_copy: (Array[Patch] patches) -> Array[Patch]
 

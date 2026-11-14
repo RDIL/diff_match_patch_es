@@ -4,6 +4,7 @@
 - Optimization: Line-mode diffs split lines by byte offset.
 - Optimization: Line placeholders are written and read as code points instead of one-character strings.
 - Optimization: Bitap matching converts its scan window to code points once instead of indexing the text at every step.
+- Optimization: `patch_make` applies pending diffs to its working text once per patch instead of recopying the text for every diff.
 
 # v2.0.0
 
