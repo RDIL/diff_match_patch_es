@@ -5,6 +5,10 @@ module DiffMatchPatchES
 
     ENCODE_URI_UNESCAPED: Regexp
 
+    ENCODE_URI_ESCAPED: Regexp
+
+    BYTE_ESCAPES: Array[String]
+
     DECODE_URI_RESERVED: String
 
     class UriError < StandardError

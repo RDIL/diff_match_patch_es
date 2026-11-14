@@ -129,4 +129,27 @@ class JsStringTest < Minitest::Test
       assert_raises(Encoding::CompatibilityError, from.to_s) { JS.last_index_of('日本語', utf16, from) }
     end
   end
+
+  def test_encode_uri
+    assert_equal "AZaz09;,/?:@&=+$-_.!~*'()#", JS.encode_uri("AZaz09;,/?:@&=+$-_.!~*'()#")
+    assert_equal '%C3%A9%F0%9F%98%80%20/', JS.encode_uri('é😀 /')
+    assert_equal '%22%3C%3E%5B%5D%7B%7D%7C%5C%5E%60%25', JS.encode_uri('"<>[]{}|\\^`%')
+    assert_equal '%0A%09%00%7F', JS.encode_uri("\n\t\x00\x7F")
+    assert_equal 'a%20b%20%20c%2520', JS.encode_uri('a b  c%20')
+    assert_equal '', JS.encode_uri('')
+
+    # The result is a new UTF-8 string, whatever the encoding of the text.
+    latin = JS.encode_uri('café'.encode(Encoding::ISO_8859_1))
+    assert_equal 'caf%E9', latin
+    assert_equal Encoding::UTF_8, latin.encoding
+    assert_equal Encoding::UTF_8, JS.encode_uri('abc'.b).encoding
+    refute_predicate JS.encode_uri('abc'), :frozen?
+
+    # Every byte of an escaped character is escaped: the second byte of "ソ" is a backslash.
+    assert_equal '%83%5C', JS.encode_uri('ソ'.encode(Encoding::Shift_JIS))
+
+    # Invalid text and ASCII-incompatible encodings raise.
+    assert_raises(ArgumentError) { JS.encode_uri("a\xFF".dup.force_encoding(Encoding::UTF_8)) }
+    assert_raises(Encoding::CompatibilityError) { JS.encode_uri('a'.encode(Encoding::UTF_16LE)) }
+  end
 end

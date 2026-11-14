@@ -87,6 +87,10 @@ module DiffMatchPatchES
 
     # Characters encodeURI leaves unescaped.
     ENCODE_URI_UNESCAPED = /\A[A-Za-z0-9;,\/?:@&=+$\-_.!~*'()#]\z/
+    # Runs of characters encodeURI escapes, other than the space.
+    ENCODE_URI_ESCAPED = /[^A-Za-z0-9;,\/?:@&=+$\-_.!~*'()# ]+/
+    # The %XX escape of each byte value.
+    BYTE_ESCAPES = (0..255).map { |byte| format('%%%02X', byte).freeze }.freeze
     # Characters whose escape sequences decodeURI refuses to decode
     # (uriReserved plus '#').
     DECODE_URI_RESERVED = ";/?:@&=+$,#"
@@ -94,6 +98,21 @@ module DiffMatchPatchES
     # JS encodeURI: percent-encodes the UTF-8 bytes of every character outside
     # the unescaped set, using uppercase hex.
     def encode_uri(str)
+      # Texts of a few bytes are quicker through the loop below.
+      if str.bytesize > 5 && str.valid_encoding? && str.encoding.ascii_compatible?
+        # One gsub keeps the scan in C. Spaces, the most common escape, go last
+        # through a plain-string gsub, which costs far less per match.
+        escaped = str.gsub(ENCODE_URI_ESCAPED) do |run|
+          next BYTE_ESCAPES[run.getbyte(0)] if run.bytesize == 1
+
+          hex = +''
+          run.each_byte { |byte| hex << BYTE_ESCAPES[byte] }
+          hex
+        end
+        escaped.gsub!(' ', '%20')
+        return escaped.force_encoding(Encoding::UTF_8)
+      end
+
       out = +''
       str.each_char do |ch|
         if ENCODE_URI_UNESCAPED.match?(ch)

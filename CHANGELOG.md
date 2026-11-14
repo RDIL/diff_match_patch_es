@@ -11,6 +11,7 @@
 - Optimization: Substring extraction no longer counts the characters of the whole text first, so its cost follows the slice position instead of the text length.
 - Optimization: Substring search from an offset in multi-byte text slices off the tail instead of walking to the offset one character at a time, and a search from the start no longer counts the characters of the text.
 - Optimization: Backward substring search in valid UTF-8 text is a byte search instead of a walk to its start one character at a time.
+- Optimization: `patch_to_text` and `diff_to_delta` escape text in one pass over runs of escaped characters instead of testing and appending one character at a time.
 
 # v2.0.0
 
