@@ -75,6 +75,21 @@ module DiffMatchPatchES
       str.rindex(pattern, from) || -1
     end
 
+    # lastIndexOf, where a match that starts before +first+ counts as none.
+    def last_index_between(str, pattern, first, from)
+      # Every match that counts lies within one slice of the text, so search
+      # only that slice. Kept to the cases last_index_of searches by byte.
+      if first.is_a?(Integer) && from.is_a?(Integer) && first.between?(1, from) && !pattern.empty? &&
+         str.encoding == pattern.encoding &&
+         (str.ascii_only? || (str.encoding == Encoding::UTF_8 && str.valid_encoding?))
+        found = last_index_of(substring(str, first, from + pattern.length), pattern, from - first)
+        return found == -1 ? -1 : found + first
+      end
+
+      found = last_index_of(str, pattern, from)
+      found < first ? -1 : found
+    end
+
     # JS Number.parseInt(str, 10): optional leading whitespace and sign,
     # JS StrWhiteSpace: ASCII whitespace, NBSP, BOM, and Unicode space separators.
     JS_PARSE_INT = /\A[\t\n\v\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]*([+-]?\d+)/

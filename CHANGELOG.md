@@ -13,6 +13,7 @@
 - Optimization: Backward substring search in valid UTF-8 text is a byte search instead of a walk to its start one character at a time.
 - Optimization: `patch_to_text` and `diff_to_delta` escape text in one pass over runs of escaped characters instead of testing and appending one character at a time.
 - Optimization: `patch_from_text` and `diff_from_delta` unescape text in two passes over its escapes instead of walking it one character at a time, which was quadratic for non-ASCII text.
+- Optimization: Bitap matching looks for an exact match before the expected location only as far back as the nearest one after it, instead of through all of the preceding text.
 
 # v2.0.0
 

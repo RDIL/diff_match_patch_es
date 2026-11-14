@@ -35,6 +35,9 @@ module DiffMatchPatchES
     # JS String.prototype.lastIndexOf: the match may start at or before +from+.
     def self?.last_index_of: (String str, String pattern, Integer from) -> Integer
 
+    # lastIndexOf, where a match that starts before +first+ counts as none.
+    def self?.last_index_between: (String str, String pattern, Integer first, Integer from) -> Integer
+
     # JS Number.parseInt(str, 10). Returns nil where JS returns NaN.
     def self?.parse_int: (String str) -> Integer?
 

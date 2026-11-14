@@ -59,6 +59,36 @@ class MatchTest < Minitest::Test
     assert_equal 0, DMP.match_bitap('abcdefghijklmnopqrstuvwxyz', 'abcdefg', 24, options)
   end
 
+  def test_match_bitap_exact_matches_around_loc
+    # Exact matches at 40 and 63: the nearer one wins.
+    [["#{'-' * 40}abc#{'-' * 20}abc#{'-' * 40}", 'abc'],
+     ["#{'あ' * 40}日本語#{'あ' * 20}日本語#{'あ' * 40}", '日本語']].each do |text, pattern|
+      loose = DMP.resolve_options(match_distance: 1000)
+      assert_equal 63, DMP.match_bitap(text, pattern, 55, loose)
+      assert_equal 40, DMP.match_bitap(text, pattern, 48, loose)
+      assert_equal 40, DMP.match_bitap(text, pattern, 51, loose)
+      assert_equal 63, DMP.match_bitap(text, pattern, 52, loose)
+      assert_equal 40, DMP.match_bitap(text, pattern, 0, loose)
+      assert_equal 63, DMP.match_bitap(text, pattern, 106, loose)
+
+      # A match out of reach of the threshold is no match.
+      strict = DMP.resolve_options(match_distance: 10, match_threshold: 0.8)
+      assert_equal 63, DMP.match_bitap(text, pattern, 55, strict)
+      assert_equal 40, DMP.match_bitap(text, pattern, 48, strict)
+      assert_equal(-1, DMP.match_bitap(text, pattern, 52, strict))
+      assert_equal(-1, DMP.match_bitap(text, pattern, 55, DMP.resolve_options(match_distance: 0)))
+
+      # A negative distance makes the further match score lower.
+      backwards = DMP.resolve_options(match_distance: -5)
+      assert_equal 40, DMP.match_bitap(text, pattern, 55, backwards)
+      assert_equal 63, DMP.match_bitap(text, pattern, 48, backwards)
+    end
+
+    # At the same distance on both sides the lower match wins.
+    tie = "#{'-' * 40}abc#{'-' * 19}abc#{'-' * 40}"
+    assert_equal 40, DMP.match_bitap(tie, 'abc', 51, DMP.resolve_options(match_distance: 1000))
+  end
+
   def test_match_main
     options = DMP.resolve_options({})
 

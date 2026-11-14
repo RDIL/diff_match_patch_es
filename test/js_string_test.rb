@@ -130,6 +130,68 @@ class JsStringTest < Minitest::Test
     end
   end
 
+  def test_last_index_between
+    # The last match that starts in first..from.
+    assert_equal 6, JS.last_index_between('abcabcabc', 'abc', 1, 100)
+    assert_equal 3, JS.last_index_between('abcabcabc', 'abc', 1, 5)
+    assert_equal 3, JS.last_index_between('abcabcabc', 'abc', 3, 3)
+    assert_equal(-1, JS.last_index_between('abcabcabc', 'abc', 1, 2))
+    assert_equal(-1, JS.last_index_between('abcabcabc', 'abc', 4, 5))
+    assert_equal(-1, JS.last_index_between('abcabcabc', 'abc', 7, 100))
+    assert_equal(-1, JS.last_index_between('abcabcabc', 'abc', 5, 3))
+    assert_equal 4, JS.last_index_between('日本語日本語', '本', 2, 4)
+    assert_equal 4, JS.last_index_between('日本語日本語', '本語', 4, 4)
+    assert_equal 1, JS.last_index_between('日本語日本語', '本', 1, 3)
+    assert_equal(-1, JS.last_index_between('日本語日本語', '本', 2, 3))
+    assert_equal(-1, JS.last_index_between('日本語日本語', '日本語', 4, 9))
+
+    # Without a lower bound it is last_index_of.
+    assert_equal 0, JS.last_index_between('abcabcabc', 'abc', 0, 2)
+    assert_equal 0, JS.last_index_between('abcabcabc', 'abc', -5, 2)
+    assert_equal 3, JS.last_index_between('日本語日本語', '日', 0, 4)
+
+    # A lower bound past the last character, within and beyond the byte count.
+    assert_equal(-1, JS.last_index_between('日本語', '語', 7, 9))
+    assert_equal(-1, JS.last_index_between('日本語', '語', 20, 30))
+
+    # An empty pattern matches at min(from, length).
+    assert_equal 2, JS.last_index_between('abc', '', 1, 2)
+    assert_equal 3, JS.last_index_between('abc', '', 3, 100)
+    assert_equal(-1, JS.last_index_between('abc', '', 4, 100))
+    assert_equal(-1, JS.last_index_between('日本語', '', 5, 7))
+
+    # Positions too large for a machine word.
+    assert_equal 2, JS.last_index_between('日本語', '語', 1, 2**70)
+    assert_equal(-1, JS.last_index_between('日本語', '語', 2**70, 2**71))
+
+    # A pattern with more bytes than the text has left at the search start.
+    assert_equal(-1, JS.last_index_between('a' * 55, '😀' * 4, 20, 55))
+    assert_equal 2, JS.last_index_between('aa😀😀a', '😀😀', 1, 5)
+
+    # An invalid byte counts as one character.
+    invalid = "日\xFF本語本".dup.force_encoding(Encoding::UTF_8)
+    assert_equal 2, JS.last_index_between(invalid, '本', 1, 3)
+    assert_equal(-1, JS.last_index_between(invalid, '本', 3, 3))
+    assert_equal 4, JS.last_index_between(invalid, '本', 3, 9)
+
+    # A match starts on a character boundary: the second byte of "ソ" is a backslash.
+    sjis = "a\\ソa".encode(Encoding::Shift_JIS)
+    backslash = '\\'.encode(Encoding::Shift_JIS)
+    assert_equal 1, JS.last_index_between(sjis, backslash, 1, 3)
+    assert_equal(-1, JS.last_index_between(sjis, backslash, 2, 3))
+
+    # A pattern in another, compatible encoding.
+    assert_equal 4, JS.last_index_between('日本語abc', 'b'.encode(Encoding::US_ASCII), 2, 5)
+    assert_equal(-1, JS.last_index_between('日本語abc', 'b'.encode(Encoding::US_ASCII), 5, 5))
+
+    # Incompatible encodings raise whatever the range, even an empty one.
+    utf16 = '本'.encode(Encoding::UTF_16LE)
+    [[0, 3], [1, 3], [3, 1], [5, 9]].each do |first, from|
+      assert_raises(Encoding::CompatibilityError, "#{first}..#{from}") { JS.last_index_between('日本語', utf16, first, from) }
+      assert_raises(Encoding::CompatibilityError, "#{first}..#{from}") { JS.last_index_between('abc', utf16, first, from) }
+    end
+  end
+
   def test_encode_uri
     assert_equal "AZaz09;,/?:@&=+$-_.!~*'()#", JS.encode_uri("AZaz09;,/?:@&=+$-_.!~*'()#")
     assert_equal '%C3%A9%F0%9F%98%80%20/', JS.encode_uri('é😀 /')

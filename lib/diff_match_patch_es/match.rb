@@ -59,7 +59,10 @@ module DiffMatchPatchES
     if best_loc != -1
       score_threshold = [bitap_score.call(0, best_loc), score_threshold].min
       # What about in the other direction? (speedup)
-      best_loc = JsString.last_index_of(text, pattern, loc + pattern.length)
+      # Only a match closer to loc than the one above can lower the threshold,
+      # unless match_distance is negative.
+      first = (resolved.match_distance <=> 0) == -1 ? 0 : (2 * loc) - best_loc
+      best_loc = JsString.last_index_between(text, pattern, first, loc + pattern.length)
       score_threshold = [bitap_score.call(0, best_loc), score_threshold].min if best_loc != -1
     end
 
