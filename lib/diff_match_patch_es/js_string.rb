@@ -7,6 +7,15 @@ module DiffMatchPatchES
 
     # JS String.prototype.substring: negative/overflowing indices clamp to [0, length] and the arguments swap when start > end.
     def substring(str, start_index, end_index = nil)
+      # Common case first: String#[] clamps the end itself, so String#length
+      # (a scan of multi-byte text) is only needed for the odd cases below.
+      size = str.bytesize
+      if start_index.between?(0, size)
+        count = end_index.nil? || end_index >= size ? size : end_index - start_index
+        result = str[start_index, count] if count >= 0
+        return result if result
+      end
+
       len = str.length
       a = start_index.clamp(0, len)
       b = end_index.nil? ? len : end_index.clamp(0, len)
