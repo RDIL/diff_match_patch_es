@@ -46,6 +46,46 @@ class DiffTest < Minitest::Test
     assert_equal 4, DMP.diff_common_suffix('1234', 'xyz1234')
   end
 
+  def test_diff_common_prefix_multibyte
+    # A shared byte prefix that ends inside a multi-byte character does not count.
+    assert_equal 0, DMP.diff_common_prefix('é', 'è')
+    assert_equal 1, DMP.diff_common_prefix('aé', 'aè')
+    assert_equal 2, DMP.diff_common_prefix('aéb', 'aéc')
+    assert_equal 0, DMP.diff_common_prefix('😀', '😁')
+    assert_equal 1, DMP.diff_common_prefix('😀a', '😀b')
+    assert_equal 3, DMP.diff_common_prefix('日本語', '日本語')
+
+    # ASCII-only text in another encoding still matches; other bytes do not.
+    assert_equal 2, DMP.diff_common_prefix('abc'.encode(Encoding::US_ASCII), 'abé')
+    assert_equal 1, DMP.diff_common_prefix('aé', 'aé'.b)
+
+    # Invalid byte sequences count one byte per character, as String#[] does.
+    assert_equal 2, DMP.diff_common_prefix(invalid_utf8("a\xFFb"), invalid_utf8("a\xFFc"))
+    assert_equal 1, DMP.diff_common_prefix(invalid_utf8("\xE2\x82a"), invalid_utf8("\xE2\x83a"))
+
+    # Long texts.
+    assert_equal 3, DMP.diff_common_prefix("abc#{'x' * 100_000}", "abc#{'y' * 100_000}")
+    assert_equal 100_000, DMP.diff_common_prefix("#{'é' * 100_000}a", "#{'é' * 100_000}b")
+  end
+
+  def test_diff_common_suffix_multibyte
+    # A shared byte suffix that starts inside a multi-byte character does not count.
+    assert_equal 0, DMP.diff_common_suffix('é', 'ĩ')
+    assert_equal 1, DMP.diff_common_suffix('bé', 'cé')
+    assert_equal 0, DMP.diff_common_suffix('😀', '😁')
+    assert_equal 1, DMP.diff_common_suffix('a😀', 'b😀')
+    assert_equal 3, DMP.diff_common_suffix('日本語', '日本語')
+
+    assert_equal 2, DMP.diff_common_suffix('xbc'.encode(Encoding::US_ASCII), 'ébc')
+    assert_equal 1, DMP.diff_common_suffix('éa', 'éa'.b)
+
+    assert_equal 1, DMP.diff_common_suffix(invalid_utf8("\xE2\x82a"), invalid_utf8("\xE2\x83a"))
+    assert_equal 1, DMP.diff_common_suffix(invalid_utf8("b\xFF"), invalid_utf8("c\xFF"))
+
+    assert_equal 3, DMP.diff_common_suffix("#{'x' * 100_000}abc", "#{'y' * 100_000}abc")
+    assert_equal 100_000, DMP.diff_common_suffix("a#{'é' * 100_000}", "b#{'é' * 100_000}")
+  end
+
   def test_diff_common_overlap
     # Detect any suffix/prefix overlap.
     # Null case.

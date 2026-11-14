@@ -63,6 +63,15 @@ module DiffMatchPatchES
   # Determine the common suffix of two strings.
   def self?.diff_common_suffix: (String text1, String text2) -> Integer
 
+  # Whether comparing text byte by byte finds the same shared prefix/suffix as
+  # comparing it character by character (ASCII-only text or valid UTF-8).
+  private def self.byte_comparable?: (String text) -> bool
+
+  # The reference character-based implementations, used for any other text.
+  private def self.diff_common_prefix_by_char: (String text1, String text2) -> Integer
+
+  private def self.diff_common_suffix_by_char: (String text1, String text2) -> Integer
+
   # Determine if the suffix of one string is the prefix of another.
   def self?.diff_common_overlap: (String text1, String text2) -> Integer
 

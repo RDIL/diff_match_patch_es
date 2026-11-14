@@ -392,6 +392,93 @@ module DiffMatchPatchES
   # Determine the common prefix of two strings.
   def diff_common_prefix(text1, text2)
     # Quick check for common null cases.
+    return 0 if text1.empty? || text2.empty? || text1.getbyte(0) != text2.getbyte(0)
+    return diff_common_prefix_by_char(text1, text2) unless byte_comparable?(text1) && byte_comparable?(text2)
+
+    # Galloping search over bytes. The reference binary search first compares
+    # the whole shorter text, which copies it here (JS substrings share
+    # memory) and scans multi-byte text to find each character index.
+    # Doubling the probe width keeps the work proportional to the prefix
+    # actually shared.
+    size = text1.bytesize < text2.bytesize ? text1.bytesize : text2.bytesize
+    lo = 1 # Bytes [0, lo) are known to match.
+    hi = 1
+    step = 1
+    while lo < size
+      hi = lo + step
+      hi = size if hi > size
+      break unless text1.byteslice(lo, hi - lo) == text2.byteslice(lo, hi - lo)
+
+      lo = hi
+      step *= 2
+    end
+    if lo < size
+      # The first mismatch lies in [lo, hi); bisect to find it.
+      while hi - lo > 1
+        mid = (lo + hi) / 2
+        if text1.byteslice(lo, mid - lo) == text2.byteslice(lo, mid - lo)
+          lo = mid
+        else
+          hi = mid
+        end
+      end
+      # Back up to a character boundary (0b10xxxxxx continues a character).
+      lo -= 1 while (text1.getbyte(lo) & 0xC0) == 0x80
+    end
+    return lo if text1.ascii_only? || text2.ascii_only?
+
+    text1.byteslice(0, lo).length
+  end
+
+  # Determine the common suffix of two strings.
+  def diff_common_suffix(text1, text2)
+    # Quick check for common null cases.
+    return 0 if text1.empty? || text2.empty? || text1.getbyte(-1) != text2.getbyte(-1)
+    return diff_common_suffix_by_char(text1, text2) unless byte_comparable?(text1) && byte_comparable?(text2)
+
+    # Galloping search over bytes, as in diff_common_prefix.
+    size1 = text1.bytesize
+    size2 = text2.bytesize
+    size = size1 < size2 ? size1 : size2
+    lo = 1 # The last lo bytes are known to match.
+    hi = 1
+    step = 1
+    while lo < size
+      hi = lo + step
+      hi = size if hi > size
+      break unless text1.byteslice(size1 - hi, hi - lo) == text2.byteslice(size2 - hi, hi - lo)
+
+      lo = hi
+      step *= 2
+    end
+    if lo < size
+      while hi - lo > 1
+        mid = (lo + hi) / 2
+        if text1.byteslice(size1 - mid, mid - lo) == text2.byteslice(size2 - mid, mid - lo)
+          lo = mid
+        else
+          hi = mid
+        end
+      end
+      # Move forward to a character boundary.
+      lo -= 1 while lo.positive? && (text1.getbyte(size1 - lo) & 0xC0) == 0x80
+    end
+    return lo if text1.ascii_only? || text2.ascii_only?
+
+    text1.byteslice(size1 - lo, lo).length
+  end
+
+  # Whether comparing text byte by byte finds the same shared prefix/suffix
+  # as comparing it character by character: ASCII-only text in any encoding,
+  # or valid UTF-8, whose byte sequences are self-synchronising.
+  def byte_comparable?(text)
+    text.ascii_only? || (text.encoding == Encoding::UTF_8 && text.valid_encoding?)
+  end
+  private_class_method :byte_comparable?
+
+  # The reference implementation of diff_common_prefix.
+  def diff_common_prefix_by_char(text1, text2)
+    # Quick check for common null cases.
     return 0 if text1.empty? || text2.empty? || text1[0] != text2[0]
 
     # Binary search.
@@ -412,9 +499,10 @@ module DiffMatchPatchES
     end
     pointermid
   end
+  private_class_method :diff_common_prefix_by_char
 
-  # Determine the common suffix of two strings.
-  def diff_common_suffix(text1, text2)
+  # The reference implementation of diff_common_suffix.
+  def diff_common_suffix_by_char(text1, text2)
     # Quick check for common null cases.
     return 0 if text1.empty? || text2.empty? || text1[-1] != text2[-1]
 
@@ -436,6 +524,7 @@ module DiffMatchPatchES
     end
     pointermid
   end
+  private_class_method :diff_common_suffix_by_char
 
   # Determine if the suffix of one string is the prefix of another.
   def diff_common_overlap(text1, text2)
