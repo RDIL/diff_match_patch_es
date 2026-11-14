@@ -42,4 +42,46 @@ class JsStringTest < Minitest::Test
     refute_predicate JS.substring('abc', 0), :frozen?
     refute_predicate JS.substring('abc', 3), :frozen?
   end
+
+  def test_index_of
+    assert_equal 1, JS.index_of('abcabc', 'bc')
+    assert_equal 4, JS.index_of('abcabc', 'bc', 2)
+    assert_equal(-1, JS.index_of('abcabc', 'bc', 5))
+    assert_equal 0, JS.index_of('abc', 'a', -5)
+    assert_equal(-1, JS.index_of('abc', 'c', 10))
+    assert_equal 1, JS.index_of('日本語', '本')
+    assert_equal 2, JS.index_of('日本語日本語', '語', 1)
+    assert_equal 5, JS.index_of('日本語日本語', '語', 3)
+    assert_equal(-1, JS.index_of('日本語', '日', 1))
+    assert_equal(-1, JS.index_of('日本語', '語', 5))
+
+    # An empty pattern matches at min(from, length).
+    assert_equal 0, JS.index_of('abc', '')
+    assert_equal 1, JS.index_of('abc', '', 1)
+    assert_equal 3, JS.index_of('abc', '', 10)
+    assert_equal 3, JS.index_of('日本語', '', 3)
+    assert_equal 3, JS.index_of('日本語', '', 5)
+
+    # Offsets too large for a machine word.
+    assert_equal 3, JS.index_of('abc', '', 2**70)
+    assert_equal(-1, JS.index_of('abc', 'c', 2**70))
+    assert_equal 2, JS.index_of('abc', 'c', -(2**70))
+
+    # An invalid byte counts as one character.
+    invalid = "日\xFF本語本".dup.force_encoding(Encoding::UTF_8)
+    assert_equal 4, JS.index_of(invalid, '本', 3)
+
+    # A match starts on a character boundary: the second byte of "ソ" is a backslash.
+    sjis = "aソ\\".encode(Encoding::Shift_JIS)
+    assert_equal 2, JS.index_of(sjis, '\\'.encode(Encoding::Shift_JIS), 1)
+
+    # A pattern in another, compatible encoding.
+    assert_equal 4, JS.index_of('日本語abc', 'b'.encode(Encoding::US_ASCII), 2)
+
+    # Incompatible encodings raise wherever the search starts.
+    utf16 = '本'.encode(Encoding::UTF_16LE)
+    [0, 1, 3, 5, 20].each do |from|
+      assert_raises(Encoding::CompatibilityError, from.to_s) { JS.index_of('日本語', utf16, from) }
+    end
+  end
 end

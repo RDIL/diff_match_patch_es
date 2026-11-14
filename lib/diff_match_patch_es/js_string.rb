@@ -32,6 +32,18 @@ module DiffMatchPatchES
 
     # JS String.prototype.indexOf.
     def index_of(str, pattern, from = 0)
+      # String#index counts the characters of +str+ to validate an offset,
+      # so a search from the start passes none.
+      return str.index(pattern) || -1 unless from.positive?
+
+      # It also walks multi-byte text to the offset one character at a time.
+      # Slicing off the tail is much faster, and the slice shares the text.
+      if !str.ascii_only? && str.encoding == pattern.encoding && from <= str.bytesize &&
+         (tail = str[from, str.bytesize])
+        found = tail.index(pattern)
+        return found ? found + from : -1
+      end
+
       from = from.clamp(0, str.length)
       str.index(pattern, from) || -1
     end

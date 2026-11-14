@@ -8,6 +8,7 @@
 - Optimization: `patch_add_context!` checks whether its context is unique with a byte search on UTF-8 text.
 - Optimization: Common prefix and suffix detection uses a galloping byte search, so its cost follows the shared length instead of the text length.
 - Optimization: Substring extraction no longer counts the characters of the whole text first, so its cost follows the slice position instead of the text length.
+- Optimization: Substring search from an offset in multi-byte text slices off the tail instead of walking to the offset one character at a time, and a search from the start no longer counts the characters of the text.
 
 # v2.0.0
 
