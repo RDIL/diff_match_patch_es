@@ -212,9 +212,21 @@ module DiffMatchPatchES
                v1[k1_offset - 1] + 1
              end
         y1 = x1 - k1
-        while x1 < text1_length && y1 < text2_length && units1[x1] == units2[y1]
+        # A unit that differs right away is the common case, so the run probe sits behind the first match.
+        if x1 < text1_length && y1 < text2_length && units1[x1] == units2[y1]
           x1 += 1
           y1 += 1
+          probe = x1 + 32
+          while x1 < text1_length && y1 < text2_length && units1[x1] == units2[y1]
+            x1 += 1
+            y1 += 1
+            next unless x1 == probe
+
+            # A long run: skip ahead in blocks, then finish one unit at a time.
+            run = diff_bisect_run(units1, units2, x1, y1, false)
+            x1 += run
+            y1 += run
+          end
         end
         v1[k1_offset] = x1
         if x1 > text1_length
@@ -247,10 +259,21 @@ module DiffMatchPatchES
                v2[k2_offset - 1] + 1
              end
         y2 = x2 - k2
-        while x2 < text1_length && y2 < text2_length &&
-              units1[text1_length - x2 - 1] == units2[text2_length - y2 - 1]
+        if x2 < text1_length && y2 < text2_length &&
+           units1[text1_length - x2 - 1] == units2[text2_length - y2 - 1]
           x2 += 1
           y2 += 1
+          probe = x2 + 32
+          while x2 < text1_length && y2 < text2_length &&
+                units1[text1_length - x2 - 1] == units2[text2_length - y2 - 1]
+            x2 += 1
+            y2 += 1
+            next unless x2 == probe
+
+            run = diff_bisect_run(units1, units2, text1_length - x2, text2_length - y2, true)
+            x2 += run
+            y2 += run
+          end
         end
         v2[k2_offset] = x2
         if x2 > text1_length
@@ -304,6 +327,33 @@ module DiffMatchPatchES
     end
   end
   private_class_method :diff_bisect_units
+
+  # Counts units known to match, forwards from at1 / at2 or backwards ending just before them, up to 62 short of the
+  # first mismatch. Compares array slices, which share memory, in blocks that double until one differs, then halve.
+  def diff_bisect_run(units1, units2, at1, at2, back)
+    left1 = back ? at1 : units1.length - at1
+    left2 = back ? at2 : units2.length - at2
+    max = left1 < left2 ? left1 : left2
+    count = 0
+    # Literal widths: YJIT in Ruby 3.4+ stops running compiled code at a constant first read in a rarely run branch.
+    width = 64
+    grow = true
+    # While growing, width is the next block. Once a block differs, it is the span that holds the first mismatch.
+    while count < max && (grow || width >= 64)
+      width = max - count if width > max - count
+      block = grow ? width : width / 2
+      skip = back ? -count - block : count
+      if units1[at1 + skip, block] == units2[at2 + skip, block]
+        count += block
+        width = grow ? width * 2 : width - block
+      else
+        width = block
+        grow = false
+      end
+    end
+    count
+  end
+  private_class_method :diff_bisect_run
 
   def line_codepoint_for(index)
     index < 0xD800 ? index : index + LINE_INDEX_SURROGATE_SHIFT

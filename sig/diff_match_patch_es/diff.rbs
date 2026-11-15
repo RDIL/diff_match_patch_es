@@ -46,6 +46,10 @@ module DiffMatchPatchES
   # when either text has an invalid byte sequence) for diff_bisect's hot loops.
   private def self.diff_bisect_units: (String text1, String text2) -> [Array[Integer] | Array[String], Array[Integer] | Array[String]]
 
+  # A count of units known to match, forwards from at1 / at2 or backwards ending
+  # just before them. It can stop up to 62 units short of the first mismatch.
+  private def self.diff_bisect_run: (Array[Integer] | Array[String] units1, Array[Integer] | Array[String] units2, Integer at1, Integer at2, bool back) -> Integer
+
   private def self.line_codepoint_for: (Integer index) -> Integer
 
   private def self.line_index_for: (Integer codepoint) -> Integer

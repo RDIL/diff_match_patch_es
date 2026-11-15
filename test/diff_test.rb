@@ -574,6 +574,124 @@ class DiffTest < Minitest::Test
     assert_equal %w[m a p], units2
   end
 
+  def test_diff_bisect_long_runs
+    options = DMP.resolve_options({})
+    bisect = ->(a, b) { DMP.diff_bisect(a, b, options, Float::MAX) }
+
+    # A long run on the front path: one that ends inside the first block, and one that spans several.
+    assert_equal [[DIFF_EQUAL, 'a' * 50], [DIFF_DELETE, 'x'], [DIFF_INSERT, 'y']],
+                 bisect.("#{'a' * 50}x", "#{'a' * 50}y")
+    assert_equal [[DIFF_EQUAL, 'a' * 300], [DIFF_DELETE, 'x'], [DIFF_INSERT, 'y']],
+                 bisect.("#{'a' * 300}x", "#{'a' * 300}y")
+
+    # On the reverse path.
+    assert_equal [[DIFF_DELETE, 'x'], [DIFF_INSERT, 'y'], [DIFF_EQUAL, 'a' * 300]],
+                 bisect.("x#{'a' * 300}", "y#{'a' * 300}")
+
+    # On both paths, and between edits.
+    assert_equal [[DIFF_EQUAL, 'a' * 200], [DIFF_DELETE, 'x'], [DIFF_INSERT, 'y'], [DIFF_EQUAL, 'b' * 200]],
+                 bisect.("#{'a' * 200}x#{'b' * 200}", "#{'a' * 200}y#{'b' * 200}")
+    assert_equal [[DIFF_DELETE, 'q'], [DIFF_INSERT, 't'], [DIFF_EQUAL, 'a' * 70], [DIFF_DELETE, 'r'],
+                  [DIFF_INSERT, 'u'], [DIFF_EQUAL, 'b' * 130], [DIFF_DELETE, 's'], [DIFF_INSERT, 'v']],
+                 bisect.("q#{'a' * 70}r#{'b' * 130}s", "t#{'a' * 70}u#{'b' * 130}v")
+
+    # A run that reaches the end of the shorter text.
+    assert_equal [[DIFF_EQUAL, 'a' * 100], [DIFF_INSERT, "#{'b' * 40}#{'a' * 30}"], [DIFF_INSERT, 'a' * 70]],
+                 bisect.('a' * 100, "#{'a' * 100}#{'b' * 40}#{'a' * 100}")
+
+    # Runs of varied text, where a comparison that is one unit out of step fails. An odd length difference ends the
+    # search on the front path, an even one on the reverse path.
+    left = (1..120).to_a.join(' ')
+    right = (500..560).to_a.join(',')
+    assert_equal [[DIFF_EQUAL, left], [DIFF_INSERT, 'yz'], [DIFF_DELETE, 'x']], bisect.("#{left}x", "#{left}yz")
+    assert_equal [[DIFF_EQUAL, left], [DIFF_DELETE, 'x'], [DIFF_INSERT, 'y']], bisect.("#{left}x", "#{left}y")
+    assert_equal [[DIFF_INSERT, 'yz'], [DIFF_DELETE, 'x'], [DIFF_EQUAL, left]], bisect.("x#{left}", "yz#{left}")
+    assert_equal [[DIFF_DELETE, 'x'], [DIFF_INSERT, 'y'], [DIFF_EQUAL, left]], bisect.("x#{left}", "y#{left}")
+    assert_equal [[DIFF_EQUAL, left], [DIFF_INSERT, 'yz'], [DIFF_DELETE, 'x'], [DIFF_EQUAL, right]],
+                 bisect.("#{left}x#{right}", "#{left}yz#{right}")
+    assert_equal [[DIFF_EQUAL, left], [DIFF_DELETE, 'x'], [DIFF_INSERT, 'y'], [DIFF_EQUAL, right]],
+                 bisect.("#{left}x#{right}", "#{left}y#{right}")
+    assert_equal [[DIFF_DELETE, 'q'], [DIFF_INSERT, 't'], [DIFF_EQUAL, left], [DIFF_INSERT, 'uu'], [DIFF_DELETE, 'r'],
+                  [DIFF_EQUAL, right], [DIFF_DELETE, 's'], [DIFF_INSERT, 'v']],
+                 bisect.("q#{left}r#{right}s", "t#{left}uu#{right}v")
+    varied = (1..60).map { |i| "é#{i}日" }.join
+    assert_equal [[DIFF_EQUAL, varied], [DIFF_INSERT, 'pq'], [DIFF_DELETE, '😀'], [DIFF_EQUAL, right]],
+                 bisect.("#{varied}😀#{right}", "#{varied}pq#{right}")
+
+    # Runs that end right after the block comparison starts: a block read from the wrong position or in the wrong
+    # direction changes each of these results.
+    assert_equal [[DIFF_EQUAL, 'a'], [DIFF_DELETE, 'b'], [DIFF_EQUAL, 'a' * 32], [DIFF_INSERT, 'a'], [DIFF_EQUAL, 'b']],
+                 bisect.("ab#{'a' * 32}b", "#{'a' * 34}b")
+    assert_equal [[DIFF_DELETE, 'a'], [DIFF_INSERT, 'b'], [DIFF_EQUAL, 'a' * 33], [DIFF_DELETE, 'a'],
+                  [DIFF_EQUAL, 'c']],
+                 bisect.("#{'a' * 35}c", "b#{'a' * 33}c")
+    assert_equal [[DIFF_INSERT, 'y'], [DIFF_INSERT, 'y'], [DIFF_EQUAL, 'c' * 34]], bisect.('c' * 34, "yy#{'c' * 34}")
+    assert_equal [[DIFF_EQUAL, 'a' * 34], [DIFF_INSERT, 'y'], [DIFF_INSERT, 'y']], bisect.('a' * 34, "#{'a' * 34}yy")
+
+    # Multi-byte characters.
+    assert_equal [[DIFF_EQUAL, 'é' * 120], [DIFF_DELETE, '😀'], [DIFF_INSERT, 'p'], [DIFF_EQUAL, '日' * 90]],
+                 bisect.("#{'é' * 120}😀#{'日' * 90}", "#{'é' * 120}p#{'日' * 90}")
+
+    # Invalid byte sequences compare per character.
+    bad = "\xFF".dup.force_encoding(Encoding::UTF_8)
+    assert_equal [[DIFF_EQUAL, bad * 80], [DIFF_DELETE, 'c'], [DIFF_INSERT, 'm'], [DIFF_EQUAL, bad * 80]],
+                 bisect.("#{bad * 80}c#{bad * 80}", "#{bad * 80}m#{bad * 80}")
+
+    # Run lengths around every block width still give a diff of the two texts with one edit per changed character.
+    [31, 32, 33, 34, 63, 64, 65, 95, 96, 97, 98, 127, 128, 129, 159, 160, 161, 223, 224, 225, 500].each do |run|
+      [%w[x y], %w[é 日]].each do |(from, to)|
+        a = "#{from}#{'a' * run}#{from}#{'b' * (run + 7)}#{from}"
+        b = "#{to}#{'a' * run}#{to}#{'b' * (run + 7)}#{to}"
+        diffs = bisect.(a, b)
+        assert_equal a, DMP.diff_text1(diffs), "run of #{run}"
+        assert_equal b, DMP.diff_text2(diffs), "run of #{run}"
+        assert_equal 3, DMP.diff_levenshtein(diffs), "run of #{run}"
+      end
+    end
+  end
+
+  def test_diff_bisect_run
+    refute_respond_to DMP, :diff_bisect_run
+    count = ->(units1, units2, at1, at2, back) { DMP.send(:diff_bisect_run, units1, units2, at1, at2, back) }
+
+    # Nothing in common, and nothing left to compare.
+    assert_equal 0, count.([1, 2, 3], [4, 2, 3], 0, 0, false)
+    assert_equal 0, count.([1, 2, 3], [1, 2, 4], 3, 3, true)
+    assert_equal 0, count.([1, 2, 3], [1, 2, 3], 3, 0, false)
+    assert_equal 0, count.([1, 2, 3], [1, 2, 3], 3, 0, true)
+
+    # A run of 100 before a mismatch: a block of 64 matches, the remaining 87 differ, and so do the first 43 of those.
+    assert_equal 64, count.([7] * 100 + [1] + [7] * 50, [7] * 100 + [2] + [7] * 50, 0, 0, false)
+    assert_equal 64, count.([7] * 50 + [1] + [7] * 100, [7] * 50 + [2] + [7] * 100, 151, 151, true)
+    # A run of 250: blocks of 64 and 128 match and 256 differs. Of that span, 128 and 64 differ and 32 match.
+    assert_equal 224, count.([7] * 250 + [1] + [7] * 200, [7] * 250 + [2] + [7] * 200, 0, 0, false)
+    assert_equal 224, count.([7] * 200 + [1] + [7] * 250, [7] * 200 + [2] + [7] * 250, 451, 451, true)
+
+    # Never more than the run, at most 62 short of it, and exact when the run reaches the end of an array.
+    [0, 1, 31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 191, 192, 193, 300, 1000].each do |run|
+      same = Array.new(run) { |i| i % 5 }
+      [[[], []], [[8, 8, 8], [9]], [[9], [8, 8, 8, 8]]].each do |(skip1, skip2)|
+        at1 = skip1.length
+        at2 = skip2.length
+        forward = count.(skip1 + same + [8, 0, 1], skip2 + same + [9, 0, 1], at1, at2, false)
+        assert_includes [run - 62, 0].max..run, forward, "forward run of #{run}"
+        assert_equal run, count.(skip1 + same, skip2 + same + [9], at1, at2, false), "forward run of #{run} to the end"
+        assert_equal run, count.(skip1 + same + [9], skip2 + same, at1, at2, false), "forward run of #{run} to the end"
+
+        back = count.([1, 0, 8] + same + skip1, [1, 0, 9] + same + skip2, run + 3, run + 3, true)
+        assert_includes [run - 62, 0].max..run, back, "backward run of #{run}"
+        assert_equal run, count.(same + skip1, [9] + same + skip2, run, run + 1, true), "backward to the start, #{run}"
+        assert_equal run, count.([9] + same + skip1, same + skip2, run + 1, run, true), "backward to the start, #{run}"
+      end
+    end
+
+    # One-character strings, which stand in for code points when a text has an invalid byte sequence.
+    bad = "\xFF".dup.force_encoding(Encoding::UTF_8)
+    assert_equal 70, count.([bad] * 70, [bad] * 70 + ['m'], 0, 0, false)
+    assert_equal 64, count.([bad] * 70 + ['c'], [bad] * 70 + ['m'], 0, 0, false)
+    assert_equal 0, count.([bad] * 70, ["\xFE".dup.force_encoding(Encoding::UTF_8)] * 70, 0, 0, false)
+  end
+
   def test_diff_main
     options = DMP.resolve_options({})
 
