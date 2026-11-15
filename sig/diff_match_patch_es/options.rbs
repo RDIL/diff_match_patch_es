@@ -16,19 +16,15 @@ module DiffMatchPatchES
 
     attr_accessor match_max_bits: Integer
 
-    def initialize: (
-      ?diff_timeout: Numeric,
-      ?diff_edit_cost: Integer,
-      ?match_threshold: Numeric,
-      ?match_distance: Integer,
-      ?patch_delete_threshold: Numeric,
-      ?patch_margin: Integer,
-      ?match_max_bits: Integer
-    ) -> void
+    def initialize: (?diff_timeout: Numeric, ?diff_edit_cost: Integer, ?match_threshold: Numeric, ?match_distance: Integer, ?patch_delete_threshold: Numeric, ?patch_margin: Integer, ?match_max_bits: Integer) -> void
 
     def to_h: () -> Hash[Symbol, Numeric]
 
     def ==: (untyped other) -> bool
+
+    def eql?: (untyped other) -> bool
+
+    def hash: () -> Integer
   end
 
   DEFAULT_OPTIONS: Options

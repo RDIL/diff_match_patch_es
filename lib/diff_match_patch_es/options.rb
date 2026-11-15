@@ -39,6 +39,15 @@ module DiffMatchPatchES
     def ==(other)
       other.is_a?(Options) && to_h == other.to_h
     end
+
+    # Stricter than +#==+ in the way +Hash#eql?+ is: 1 and 1.0 are not eql?.
+    def eql?(other)
+      other.is_a?(Options) && to_h.eql?(other.to_h)
+    end
+
+    def hash
+      to_h.hash
+    end
   end
 
   DEFAULT_OPTIONS = Options.new.freeze
