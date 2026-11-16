@@ -1,7 +1,8 @@
-# Unreleased
+# v3.0.0
 
 - **Breaking:** functions that mutate an argument in place are now named with a trailing bang (`diff_cleanup_semantic!`, `diff_cleanup_efficiency!`, `diff_cleanup_merge!`, `diff_cleanup_semantic_lossless!`, `diff_chars_to_lines!`, `patch_add_context!`, `patch_add_padding!`, `patch_split_max!`).
 - Fix: Matching in ASCII-only or valid UTF-8 text no longer goes through `String#rindex`, which can read past the end of the text and crash the interpreter ([Ruby bug #22548](https://bugs.ruby-lang.org/issues/22548)).
+- Fix: Semantic cleanup no longer treats `ſ` (U+017F) and `K` (U+212A) as alphanumeric, which the JavaScript library does not.
 - Feature: `Options` defines `eql?` and `hash`, so equal options are the same Hash key and are deduplicated by `uniq`.
 - Optimization: Line-mode diffs split lines by byte offset.
 - Optimization: Line placeholders are written and read as code points instead of one-character strings.

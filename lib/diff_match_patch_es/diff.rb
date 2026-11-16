@@ -778,7 +778,8 @@ module DiffMatchPatchES
     nil
   end
 
-  NON_ALPHA_NUMERIC_REGEX = /[^a-z0-9]/i
+  # The reference is /[^a-z0-9]/i. Ruby's /i also folds U+017F and U+212A onto s and k, which JS does not.
+  NON_ALPHA_NUMERIC_REGEX = /[^a-zA-Z0-9]/
   # Matches the JS \s class (which the reference implementation uses).
   WHITESPACE_REGEX = /[\t\n\v\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]/
   LINEBREAK_REGEX = /[\r\n]/

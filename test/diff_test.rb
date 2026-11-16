@@ -342,6 +342,18 @@ class DiffTest < Minitest::Test
     diffs = [[DIFF_EQUAL, 'The xxx. The '], [DIFF_INSERT, 'zzz. The '], [DIFF_EQUAL, 'yyy.']]
     DMP.diff_cleanup_semantic_lossless!(diffs)
     assert_equal [[DIFF_EQUAL, 'The xxx.'], [DIFF_INSERT, ' The zzz.'], [DIFF_EQUAL, ' The yyy.']], diffs
+
+    # Letters that case-fold onto ASCII are not alphanumeric: the edit stays against them.
+    ["ſ", "K"].each do |letter|
+      diffs = [[DIFF_EQUAL, "#{letter}ab"], [DIFF_DELETE, 'ab'], [DIFF_EQUAL, 'c']]
+      DMP.diff_cleanup_semantic_lossless!(diffs)
+      assert_equal [[DIFF_EQUAL, letter], [DIFF_DELETE, 'ab'], [DIFF_EQUAL, 'abc']], diffs
+    end
+
+    # An ASCII letter in the same place is alphanumeric, so the edit moves to the end.
+    diffs = [[DIFF_EQUAL, 'xab'], [DIFF_DELETE, 'ab'], [DIFF_EQUAL, 'c']]
+    DMP.diff_cleanup_semantic_lossless!(diffs)
+    assert_equal [[DIFF_EQUAL, 'xab'], [DIFF_DELETE, 'ab'], [DIFF_EQUAL, 'c']], diffs
   end
 
   def test_diff_cleanup_semantic
