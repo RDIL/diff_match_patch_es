@@ -1,3 +1,7 @@
+# v3.0.1
+
+(Re-publish of 3.0.0 due to broken Rakefile. No code changes.)
+
 # v3.0.0
 
 - **Breaking:** functions that mutate an argument in place are now named with a trailing bang (`diff_cleanup_semantic!`, `diff_cleanup_efficiency!`, `diff_cleanup_merge!`, `diff_cleanup_semantic_lossless!`, `diff_chars_to_lines!`, `patch_add_context!`, `patch_add_padding!`, `patch_split_max!`).
